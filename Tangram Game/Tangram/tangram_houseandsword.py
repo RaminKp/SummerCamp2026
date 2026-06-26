@@ -54,7 +54,6 @@ Run
 
 SPACE = buzzer/check    H = hint    K = (re)calibrate    Q = quit
 
-Ramin / Ayed - UNBC HRI study 2026
 """
 
 import argparse
