@@ -1,13 +1,15 @@
 """
-narrator.py — Narration for game checkpoints.
+narrator.py -- Narration for game checkpoints.
 
 Loads pre-generated narration from narration_cache.json (created by
-generate_narration.py).  Falls back to hardcoded defaults if the cache
-is missing or incomplete.
+generate_narration.py).  Each message key may contain a list of
+variations -- one is chosen at random each game run.
+Falls back to hardcoded defaults if the cache is missing or incomplete.
 """
 
 import json
 import os
+import random
 
 # ── Cache file path ──────────────────────────────────────────────────────────
 
@@ -79,9 +81,9 @@ def pre_generate(checkpoints: list, map_id: int = 1) -> list[dict]:
     cached_phases = _load_cache(map_id)
 
     if cached_phases:
-        print(f"  ✓  Loaded AI narration from cache ({len(cached_phases)} phases).")
+        print(f"  [OK] Loaded AI narration from cache ({len(cached_phases)} phases).")
     else:
-        print("  ℹ  No narration cache found — using hardcoded fallbacks.")
+        print("  [INFO] No narration cache found -- using hardcoded fallbacks.")
         print(f"     Run 'python3 generate_narration.py' to generate AI narration.")
 
     # ── Build narration list ─────────────────────────────────────────────
@@ -89,12 +91,11 @@ def pre_generate(checkpoints: list, map_id: int = 1) -> list[dict]:
         location = getattr(cp, "location", "destination")
         msgs     = {}
 
-        # Source 1: cache
+        # Source 1: cache (values may be lists of variations or single strings)
         if cached_phases and i < len(cached_phases):
             cached_msgs = cached_phases[i].get("messages", {})
-            # Use cached values, falling back per-key if any are missing/null
             for key in ("hint", "success", "wrong_order", "wrong_ids", "returning"):
-                msgs[key] = cached_msgs.get(key) or None
+                msgs[key] = _pick_random(cached_msgs.get(key))
 
         # Source 2: hardcoded fallback for any missing keys
         if i < len(HARDCODED_NARRATION):
@@ -128,14 +129,31 @@ def _load_cache(map_id: int) -> list | None:
         if map_data and "phases" in map_data:
             return map_data["phases"]
     except (json.JSONDecodeError, KeyError, TypeError) as e:
-        print(f"  ⚠  Cache file corrupt or unreadable: {e}")
+        print(f"  [WARN] Cache file corrupt or unreadable: {e}")
+    return None
+
+
+def _pick_random(value) -> str | None:
+    """Pick a random variation from a cached value.
+
+    Handles both formats:
+      - list of strings  (new multi-variation format) -> random.choice
+      - single string    (old format / backward compat) -> return as-is
+      - None / empty     -> None (triggers fallback)
+    """
+    if isinstance(value, list):
+        # Filter out None entries (failed generations)
+        valid = [v for v in value if v]
+        return random.choice(valid) if valid else None
+    if isinstance(value, str) and value:
+        return value
     return None
 
 
 def _default(key: str, location: str) -> str:
     return {
         "success":     f"Great job! Now heading to the {location}!",
-        "wrong_order": "Right cards, wrong order — give it another go!",
+        "wrong_order": "Right cards, wrong order -- give it another go!",
         "wrong_ids":   "Those aren't quite the right cards. Try again!",
-        "returning":   f"Trip to the {location} complete — heading home!",
+        "returning":   f"Trip to the {location} complete -- heading home!",
     }[key]

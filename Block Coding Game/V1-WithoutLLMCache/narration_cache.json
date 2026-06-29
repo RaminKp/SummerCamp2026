@@ -1,0 +1,375 @@
+{
+  "1": {
+    "map_id": 1,
+    "map_name": "Map 1 — Out and Back",
+    "model": "gemma3:4b",
+    "variations_per_key": 10,
+    "generated_at": "2026-06-27 16:37:42",
+    "phases": [
+      {
+        "phase": 1,
+        "location": "destination",
+        "sequence": [
+          1,
+          1
+        ],
+        "messages": {
+          "hint": [
+            "Wow, that’s fantastic! Let's put down ‘forward’ first – excellent choice! Now move another ‘forward’ card to take you closer!",
+            "Wow, fantastic! Let’s try this leg – it's super exciting! Place a ‘forward’ card, then another ‘forward’ card to move ahead! You’re doing wonderfully!",
+            "Wow, that’s fantastic! Let's move forward one step! Now put down another card – keep going ahead! You’re doing so well!",
+            "Wow, let’s go! Place a ‘forward’ card, that's fantastic! Now move me just a little further ahead – brilliant!",
+            "Okay, let’s go! Place a ‘forward’ card – brilliant! Now move me just a little further forward too! You're doing so well!",
+            "Wow, you’re doing so great! Let's put down a ‘forward’ card – that’s a big step ahead! Now, let’s add another ‘forward’ to keep going! You are amazing!",
+            "Wow, that’s fantastic! Let's move forward one step now. Place a ‘forward’ card – you’re doing great!",
+            "Wow, you’re doing so great! Let's put down a ‘Forward’ card – that’s a big step forward! Now let’s place another one – keep moving ahead!",
+            "Okay! Let’s go on an adventure! Place a ‘Forward’ card, that's a great start! Now move me just a little further ahead – brilliant!",
+            "Okay! Let’s go on an adventure! Place a ‘Forward’ card, that's a great start! Now move me just a little further ahead – brilliant!"
+          ],
+          "success": [
+            "Wow, you did it! That was super clever navigation! Let’s zoom to the finish line now!",
+            "Wow, you did it! That was brilliant navigation – let’s zoom to the finish line now!",
+            "Wow, you did it! That was a super clever turn – let’s zoom to the finish line now!",
+            "Wow, you did it! That was a super clever turn – let’s zoom to the finish line!",
+            "Wow, you’re a super navigator! You totally nailed that first leg – brilliant!",
+            "Wow, you did it! That was super clever – let’s zoom to the finish line!",
+            "Wow, you did it! That was super clever – let’s go to the next spot!",
+            "Wow, you’re amazing! You solved it perfectly – let's zoom to the finish line!",
+            "Wow, you did it! That was brilliant navigation – let's zoom to the finish line!",
+            "Wow, you did it! That was super clever – fantastic job! Let’s see where we go next!"
+          ],
+          "wrong_order": [
+            "Wow, you got all the right choices! Those cards are super smart! Let’s shuffle them around a bit to find the best path!",
+            "Wow, you’re doing so well! These cards are absolutely perfect – fantastic work! Let's just shuffle them a little to get you to the next spot!",
+            "Wow, you’re doing so great! Those cards are absolutely perfect – brilliant choices! Just try shuffling them a little differently for leg one!",
+            "Wow, you’re doing so great! These cards are absolutely perfect – brilliant choices! Let's just shuffle them a little differently to find the right path!",
+            "Wow, you’re doing so well! Those cards are absolutely right – fantastic work! Let's shuffle them around a bit to find the perfect path!",
+            "Wow, you’re doing so great! Those cards are absolutely perfect for leg one – brilliant! Just a tiny shuffle will get you to your destination!",
+            "Wow, you’re doing so great! Those cards are absolutely perfect – let's just shuffle them a little bit! We can get to the destination for sure!",
+            "Wow, you’re doing so great! These cards are absolutely perfect – let's just shuffle them a little bit to find the right path!",
+            "Wow, you’re doing so great! Those cards are absolutely perfect – let's just shuffle them a little bit! We can find the right path for leg one!",
+            "Wow, you’re doing so well! Those cards are absolutely right – fantastic work! Let's just shuffle them a little to find the perfect path!"
+          ],
+          "wrong_ids": [
+            "Wow, that’s a clever attempt! Let’s see if we can find a new path!  Try shuffling the cards – a fresh start might help us get there!",
+            "Wow, that’s a clever attempt! Let’s see if we can find a new route – how about trying some different cards? We can totally get to the destination!",
+            "Wow, that’s a clever try! Let’s see if we can find a new path – how about picking some different cards? We can totally do this!",
+            "Wow, that’s a super interesting route! Let’s give it another shot – perhaps some new choices will lead us right to the finish!",
+            "Wow, that’s a clever try! Let’s see if we can find a new route – you’ve got lots more cards to explore!",
+            "Wow, that’s a clever try! Let’s see if we can find a new route – how about shuffling those cards again? We can totally do this!",
+            "Wow, that’s a really interesting path you picked! Let’s see if we can find the right way forward – try some new cards!",
+            "Wow, that’s a super interesting path you chose! Let’s see if we can find the right way forward – give those cards another look!",
+            "Wow, that’s a super interesting path you chose! Let’s see if we can find the right way forward – let's mix things up!",
+            "Wow, that’s a really interesting path you chose! Let’s give those new cards a whirl – maybe they’ll lead us to the treasure!"
+          ],
+          "returning": [
+            "Wow, you’re a super navigator – fantastic job completing that leg! Let's get you safely back to base!",
+            "Wonderful! You’re a super navigator, let’s go home!",
+            "Wow, that was a super speedy return journey! Let’s see where our next adventure takes us!",
+            "Wow, you’re a super navigator – what an amazing journey!",
+            "Wow, that was a super speedy return journey! You’re an amazing navigator!",
+            "Wow, you’re a super navigator – fantastic work! Let’s get you safely back to base!",
+            "Wow, you’re a super navigator! That was an absolutely brilliant journey!",
+            "Wonderful! You’ve made amazing progress, let’s go home now!",
+            "Wonderful! You’ve turned out to be a super speedy navigator – hooray!",
+            "Wow, you’re a super navigator! That was such a brilliant journey!"
+          ]
+        }
+      },
+      {
+        "phase": 2,
+        "location": "supermarket",
+        "sequence": [
+          1,
+          2,
+          1,
+          2,
+          1
+        ],
+        "messages": {
+          "hint": [
+            "Wow, you’re doing so great! Let's put down ‘forward’ first – that’s a big step! Now, turn left a little bit – like you’re waving hello!",
+            "Okay! Let’s do this! Place the “Forward” card now, that's fantastic! Now turn to your right – brilliant thinking!",
+            "Wow, you’re doing so well! Let's put down ‘forward’ first – that's a big step! Then turn left – like you are giving the map a little hug!",
+            "Wow, you’re doing so great! Let's put down ‘forward’ first – that’s a good start! Now, think about turning a little to your right – place ‘left turn’!",
+            "Wow, you’re doing so well! Let's put down ‘forward’ first – that’s a big step! Then, turn your wheels to the left a little bit – excellent thinking!",
+            "Wow, you’re doing so great! Let's put down ‘forward’ first – that’s a big step! Now turn left gently like you’re waving hello!",
+            "Wow, you’re doing great! Let's put down ‘forward’ first – that’s a good start! Now turn left a little bit – let's go!",
+            "Wow, you’re doing so great! Let's put down ‘Forward’ first – that’s a big step! Then turn left, like you're giving the shop a friendly wave!",
+            "Wow, you’re doing so great! Let's put down ‘forward’ first – that’s a big step! Then turn to your left, like you’re saying hello to the shops!",
+            "Okay! Let’s go on an adventure! Place the “Forward” card, that's a great start! Now, turn left – you’re doing wonderfully!"
+          ],
+          "success": [
+            "Wow, you’re a super navigator! Let’s zoom on down to the supermarket – fantastic job!",
+            "Wow, you’re a super navigator! Let’s zoom on over to the supermarket – fantastic work!",
+            "Wow, you’re a super navigator! Let’s zoom on down to the supermarket – fantastic work!",
+            "Wow, you’re a super navigator! Let’s zoom on over to the supermarket – brilliant!",
+            "Wow, you’re a super navigator! Let’s zoom on down to the supermarket – fantastic job!",
+            "Wow, you’re a super navigator! Let’s zoom on over to the supermarket – brilliant!",
+            "Wow, you’re a super navigator! Let’s zoom on down to the supermarket – fantastic job!",
+            "Wow, you’re a super navigator! Let's zoom on down to the supermarket now – fantastic work!",
+            "Wow, you’re a super navigator! Let’s zoom on over to the supermarket – brilliant work!",
+            "Wow, you’re a super navigator! Let’s zoom on over to the supermarket now – fantastic job!"
+          ],
+          "wrong_order": [
+            "Wow, you’re doing so great! Those cards are perfect – let's just shuffle them a little bit! We can get to the supermarket soon!",
+            "Wow, you’re doing so great! Those cards are perfectly right – let's just shuffle them a bit! You’re getting warmer to the supermarket!",
+            "Wow, you’re doing so great! These cards look fantastic – let's just shuffle them around a little bit to find the right path!",
+            "Wow, you’re doing so great! Those cards are absolutely perfect for reaching the supermarket – brilliant! Just give them a little shuffle to find the right sequence!",
+            "Wow, you’re doing so great! These cards are absolutely perfect – let's just shift them around a bit! You’re getting warmer to the supermarket!",
+            "Wow, you’re doing so well! Those cards are absolutely perfect – let’s just shuffle them a little bit! We can get to the supermarket super fast!",
+            "Wow, you’re doing so great! Those cards are totally right – brilliant choices! Let's just shuffle them a little differently for this leg.",
+            "Wow, you’re doing so well! Those cards are fantastic – they're definitely on the right path! Let’s just shuffle them around a bit to get to the supermarket!",
+            "Wow, you’re doing so well! Those cards are perfectly right – fantastic! Let's just shuffle them around a little bit to find the best route!",
+            "Wow, you’re doing so well! Those cards are absolutely perfect for getting there – just a little shuffle needed! Let's try flipping them around to find the right path!"
+          ],
+          "wrong_ids": [
+            "Wow, that’s a super interesting path! Let’s give those other cards a whirl – they might lead to yummy treats! We can totally find the supermarket!",
+            "Wow, that’s a super interesting path! Let’s give those cards another whirl – they can be tricky sometimes!  You've got this, let's find the supermarket together!",
+            "Wow, that’s a clever try! Let’s see if we can find another way forward.  Why don’t you shuffle the cards again?",
+            "Wow, that’s a really interesting path! Let’s give those maps another whirl – you can do it!  Picking new cards will help us find the supermarket super fast!",
+            "Wow, that’s a clever try! Let’s see if we can find a new path!  Time to shuffle the cards and explore some different routes – you got this!",
+            "Wow, that’s a really interesting path! Let’s see if we can find the supermarket with some brand new cards.  Don't worry, this game is all about exploring – let’s try something different!",
+            "Wow, that’s a clever try! Let’s give it another go – you can do it!  Pick some new cards; let's find the supermarket together!",
+            "Wow, that’s a clever try! Let’s see if we can find a new path!  Pick some different cards – you've got lots to choose from!",
+            "Wow, that’s a really interesting path! Let’s give those cards another look – you can do it!  Maybe we can find a brand new way to reach the supermarket!",
+            "Wow, that’s a super interesting path! Let’s give those cards another look – you can do it!  Perhaps a fresh mix will lead us right to the supermarket!"
+          ],
+          "returning": [
+            "Wow, you’re doing such a fantastic job returning to your cozy house!",
+            "Wow, you’re doing such a fantastic job returning to your cozy house!",
+            "Wonderful! You’ve made it safely back – hooray for a speedy return!",
+            "Wow, you’re doing such a fantastic job navigating back to your cozy house!",
+            "Wow, you’re doing such a fantastic job returning safely! That was a super speedy journey back!",
+            "Wonderful! You’ve made such a speedy journey back, let’s celebrate!",
+            "Wow, you’re doing such a fantastic job returning to your cozy house!",
+            "Wonderful! You’ve made such a speedy return journey, superstar!",
+            "Wow, you’re doing such a fantastic job returning safely! That was a super speedy journey back home!",
+            "Wow, you’re doing such a fantastic job returning to your cozy house!"
+          ]
+        }
+      },
+      {
+        "phase": 3,
+        "location": "destination",
+        "sequence": [
+          1,
+          2,
+          1,
+          3,
+          1
+        ],
+        "messages": {
+          "hint": [
+            "Okay, let’s go! Place a “Forward” card now – great job! Now turn to your left a little bit – clever move!",
+            "Okay, let’s go! Place a ‘Forward’ card now – brilliant! Now turn to your left, that's super clever!",
+            "Wow, you’re doing so great! Let's put down ‘forward’ first – that’s a wonderful start! Now, turn a little to your left - brilliant!",
+            "Wow, you’re doing so great! Let's put down a ‘forward’ card – that’s a big step ahead! Now turn left to head towards the next spot!",
+            "Okay! Let's do this – Leg 3 is super exciting!\n\nPlace a ‘Forward’ card, then turn to your left a little bit. Now move forward again – you’re doing great!",
+            "Okay! Let’s do this – fantastic work on leg three! \n\nPlace a ‘Forward’ card, then spin around to your left! Now, another ‘Forward’ will help you get closer. You’re doing wonderfully!",
+            "Wow, you’re doing so great! Let's play leg three – super exciting!\n\nPlace a “Forward” card now – that’s right ahead! Then, turn your robot left a little bit.",
+            "Wow, you’re doing so great! Let's put down a “forward” card first – that’s a big step ahead! Now, turn slightly to the left—place a \"left turn\" card now too! Fantastic work!",
+            "Okay! Let’s do this – you're doing so well!\n\nPlace a ‘Forward’ card, then turn your robot to the left a little bit! That’s fantastic progress!",
+            "Wow, you’re doing so great! Let's put down a ‘forward’ card first – that’s a big step! Then turn left a little bit – let’s go for another ‘forward’!"
+          ],
+          "success": [
+            "Wow, you’re brilliant! That was a super clever turn – let's go to the finish line!",
+            "Wow, you’re brilliant! That was a super clever turn – let's go to the finish line!",
+            "Wow, you did it! That was a super clever turn, let’s go to the finish line!",
+            "Wow, you’re amazing! You totally nailed that tricky leg – let's go to the finish line!",
+            "Wow, you’re brilliant! That was a super smart turn – let's go to the finish line!",
+            "Wow, you did it! That was a super clever move – fantastic! Let’s see where we go next!",
+            "Wow, you did it! That was super clever – fantastic work! Let’s see where we go next!",
+            "Wow, you’re amazing! You cracked the code for leg three – fantastic!",
+            "Wow, you’re amazing! You totally nailed that tricky leg – brilliant!",
+            "Wow, you did it! That was super clever navigation! We’re almost there, hooray!"
+          ],
+          "wrong_order": [
+            "Wow, you’re doing fantastic! Those cards are absolutely right – brilliant! Let's just shuffle them a little differently to find the path!",
+            "Wow, you’re doing so great! These cards are absolutely perfect – brilliant choices! Let's just shuffle them around a little to find the right path!",
+            "Wow, you’re doing fantastic! Those cards are absolutely right – brilliant choices! Let's just shuffle them a little bit to get you closer to your goal!",
+            "Wow, you’re doing so great! Those cards are absolutely perfect – brilliant choices! Just give them a little shuffle and try a new order!",
+            "Wow, you’re doing so well! Those cards are absolutely perfect – brilliant choices! Let's just shuffle them a little bit to find the right path!",
+            "Wow, you’re doing fantastic! Those cards are absolutely right – brilliant work! Let's just shuffle them around a little bit to get you closer to your goal!",
+            "Wow, you’re doing so great! These cards look fantastic – brilliant choices! Let's shuffle them a little to find the perfect path!",
+            "Wow, you’re doing so great! These cards are perfectly right – brilliant! Now let's shuffle them a little to find the best path!",
+            "Wow, you’re doing so great! These cards are absolutely spot on – fantastic work! Let's just shuffle them around a little bit to find the right path!",
+            "Wow, you’re doing so great! These cards are absolutely perfect – fantastic work! Let's just shuffle them a little to find the right path!"
+          ],
+          "wrong_ids": [
+            "Wow, that’s a clever try! Let’s see if we can find a new path.  Maybe some different cards will lead us to the treasure!",
+            "Wow, that’s a really interesting path! Let’s give it another go – maybe some new cards will lead us to the treasure!",
+            "Wow, that’s a clever try! Let’s see if we can find a new path!  Pick some other cards – you've got so many choices!",
+            "Wow, that’s a super interesting path you chose! Let’s give those other cards a whirl – they might lead us to the finish line!",
+            "Wow, that’s a super interesting path you picked! Let’s give it another whirl – maybe some new cards will lead us right to the treasure!",
+            "Wow, that’s a clever try! Let’s see if we can find a new path!  Time to shuffle those cards again – let's discover the right way!",
+            "Wow, that’s a clever try! Let’s see if we can find a brand new route!  Pick some other cards – you've got so many cool choices!",
+            "Wow, that’s a tricky turn! Let’s see if we can find a new path.  Maybe we need to swap some cards – let's give it another shot!",
+            "Wow, that’s a super interesting path you chose! Let’s give those other cards a whirl – they might lead to an amazing surprise!",
+            "Wow, that’s a super interesting path you picked! Let’s give those directions another go – maybe some new cards will lead us right to the finish line!"
+          ],
+          "returning": [
+            "Wow, you’re a super navigator – fantastic job!",
+            "Wow, you’ve been a super speedy explorer! That was fantastic work returning to base!",
+            "Wow, you’re a super navigator – let’s go celebrate your awesome journey!",
+            "Wow, you’re a super navigator – fantastic work! Let’s zoom back to base camp!",
+            "Wow, that was a super speedy return journey! You’re an amazing navigator!",
+            "Wonderful! You navigated brilliantly, let’s zoom on back to base!",
+            "Wonderful! You’re zooming back to base camp like a speedy little robot!",
+            "Wow, you’re a super navigator! That was an amazing journey back to base!",
+            "Wonderful! You’ve navigated brilliantly, let’s go home!",
+            "Wow, that was a super speedy return journey! You’re an amazing navigator!"
+          ]
+        }
+      },
+      {
+        "phase": 4,
+        "location": "school",
+        "sequence": [
+          1,
+          2,
+          1,
+          1,
+          2,
+          1
+        ],
+        "messages": {
+          "hint": [
+            "Wow, you’re doing so well! Let's put down ‘forward’ first – that’s a great start! Now, turn left a little bit – which way does your robot face?",
+            "Wow, leg four! You're doing so great!\n\nLet’s put down “forward” first – that’s a big step ahead! \n\nThen, let’s turn left with “left turn”.  Think about where the school is facing! \n\nNow, \"forward\" again – you’re getting closer!  \n\n“Forward” one more time – excellent work",
+            "Wow, you’re doing so great! Let's move forward one step – place the ‘forward’ card! Now, turn a little to your left – that’s a ‘left turn’ card! You’re getting warmer!",
+            "Wow, you’re doing so well! Let's put down ‘forward’ first – that’s a big step! Then turn left a little bit, excellent work!",
+            "Wow, you’re doing so great! Let's move forward now – that’s one card! Then turn to your left a little bit – place a ‘left’ card next!  Fantastic progress! Now move ahead again – put down a ‘forward’ card please. You are getting closer to the school!",
+            "Okay! Let’s do this – you're doing fantastic!\n\nPlace a “Forward” card, then turn sharply to your left! Now move forward again – brilliant work!",
+            "Okay! Let’s do this – you’re doing so well!\n\nPlace a ‘Forward’ card, then turn to your right like you're waving hello! Now put another 'Forward' card down – great job!",
+            "Wow, you’re doing so great! Let's put down “forward” first – that’s a good start! Now turn left a little bit to change direction!",
+            "Okay! Let’s do this – you're doing great!\n\nPlace a ‘Forward’ card, then turn to your right! That’s a clever move! \n\nNow put down another ‘Forward’ card – keep going forward! Then, let’s make another left turn. You’re getting closer to the school! \n\nFinally, place one last ‘Forward’ card",
+            "Wow, you’re doing so great! Let's put down ‘forward’ first – that’s a big step! Now turn left a little bit – like you’re waving hello to a tree!"
+          ],
+          "success": [
+            "Wow, you’re amazing! You totally nailed that tricky leg – let's go to school!",
+            "Wow, you’re amazing! You totally nailed that tricky leg – let's go to school!",
+            "Wow, you’re brilliant! You nailed it – let's zoom toward the school now!",
+            "Wow, you’re amazing! You cracked the code – let's zoom to school!",
+            "Wow, you’re brilliant! You totally nailed that tricky leg – fantastic work!",
+            "Wow, you’re a super navigator! Let’s zoom on down to school – fantastic job!",
+            "Wow, you’re brilliant! You solved the puzzle perfectly – let's go to school!",
+            "Wow, you’re brilliant! You nailed that leg – fantastic work!",
+            "Wow, you’re amazing! You totally nailed that leg – brilliant navigation!",
+            "Wow, you did it! You’re super smart – let's go to school now!"
+          ],
+          "wrong_order": [
+            "Wow, you’re doing so great! Those cards are absolutely perfect for reaching school – brilliant! Just try shuffling them a little differently now!",
+            "Wow, you’re doing such a fantastic job! Those cards are perfectly right – let's just shuffle them around a little bit!",
+            "Wow, you’re doing so well! These cards are absolutely perfect – just not in the right sequence yet! Let's shuffle them around a little bit to find the path to school!",
+            "Wow, you’re doing so great! Those cards are perfectly right – fantastic work! Let's just shuffle them a little differently to find the way to school!",
+            "Wow, you’re doing so great! Those cards are definitely the right path – brilliant! Let's just shuffle them a little differently to reach school on this leg.",
+            "Wow, you’re doing so great! Those cards are definitely the right ones for this leg – fantastic work! Let's just shuffle them around a little bit to get us to school!",
+            "Wow, you’re doing so great! These cards are definitely pointing us toward school – fantastic work! Let's just shuffle them a little bit to find the perfect path!",
+            "Wow, you’re doing so great! These cards look fantastic – almost there! Let's just shift them a little to find the right path to school!",
+            "Wow, you’re doing so great! Those cards are absolutely perfect – let's just shift them around a little bit! You’re getting warmer to the school!",
+            "Wow, you’re doing amazing! Those cards are perfectly right – let's just shuffle them a little bit differently! You’re so close to the school!"
+          ],
+          "wrong_ids": [
+            "Wow, that’s a clever try! Let’s see if we can find the right way to school.  Maybe shuffling the cards will give us a brand new path!",
+            "Wow, that’s a clever try! Let’s see if we can find the right path to school!  \n\nDon't worry, we just need to swap some cards around – it’s like a little puzzle!  Let’s give it another go with different choices!",
+            "Wow, that’s a clever try! Let’s see if we can find the right path!  Pick some new cards – you've got this!",
+            "Wow, that’s a super interesting route! Let’s give it another go – different cards will help us find the school! We can totally do this!",
+            "Wow, that’s a clever attempt! Let’s see if we can find the school now.  Try picking some new cards – you've got lots of choices!",
+            "Wow, that’s a clever try! Let’s see if we can find the school with some new directions.  Pick some other cards – you’ve got this!",
+            "Wow, that’s a super interesting path! Let’s give it another whirl – you can totally do this!  Let's mix up the cards and see where they lead us!",
+            "Wow, that’s a tricky turn! Let's give this leg a brand new spin!  Try picking some different cards – you can do it!",
+            "Wow, that’s a really clever attempt! Let’s see if we can find the right path to school. Maybe we can mix up our cards – let's give it another go!",
+            "Wow, that’s a super interesting path! Let’s give those cards another look – you can do it! Maybe a new combination will lead us right to school!"
+          ],
+          "returning": [
+            "Wow, you’ve been a super speedy traveler! Let’s zoom back to your cozy house now!",
+            "Wow, that was a super speedy return journey! Let’s see where we go next!",
+            "Wow, that was a super speedy return journey! Let’s see where we go next!",
+            "Wow, you’ve had such a brilliant adventure exploring! Let’s zoom back to your cozy house now!",
+            "Wow, what a fantastic journey you’ve had exploring! Let's get you safely back to your cozy nest!",
+            "Wow, that was a super speedy journey back! You’re an amazing navigator!",
+            "Wow, that was a super speedy journey back to your cozy house!",
+            "Wow, that was a super speedy return journey! You’re such a brilliant navigator!",
+            "Wow, that was a super speedy return journey! You’re such a fantastic navigator!",
+            "Wow, that was a super speedy return journey! You’re such a clever navigator!"
+          ]
+        }
+      },
+      {
+        "phase": 5,
+        "location": "destination",
+        "sequence": [
+          1,
+          2,
+          1,
+          1,
+          3,
+          1
+        ],
+        "messages": {
+          "hint": [
+            "Okay! Let’s do this – you're doing amazing!\n\nPlace a ‘Forward’ card, then turn your robot to the left a little bit. Now place another ‘Forward’ card – brilliant!  Next, move forward again – super smart! Then, gently twist right and put down a 'Forward' card too. You are getting so close!",
+            "Okay! We're almost there – leg five! Let’s do this!\n\nPlace a ‘forward’ card, then turn your robot left a little bit. Now place another ‘forward’ card to go straight ahead! You’re doing great!",
+            "Okay! Fantastic work on getting this far! Let's do this – you’re doing so well!\n\nPlace a “Forward” card, then turn your robot left! Now put another \"Forward\" card to move ahead. Time for a twist - place a “Right Turn” card now! Finally, just one more “Forward” card to reach the end! You got this!",
+            "Wow, you’re doing so great! Let's put down ‘forward’ first – that’s a big step! Now turn left a little bit – like you’re waving hello!",
+            "Wow, you’re doing so well! Let's get you to that amazing spot!\n\nPlace a ‘forward’ card first – let’s move ahead! Then, turn your robot left – like you're saying hello to a new friend! Now place another 'forward' card – keep going forward! \n\nNext, take two more ‘forward’ cards – almost there! Finally",
+            "Wow, you’re doing so great! Let's play leg five – exciting!\n\nPlace a ‘forward’ card first, then turn left to head towards the next spot. Now put another ‘forward’ card - brilliant! Keep going forward again – fantastic work! Finally, a ‘right turn’ and one more ‘forward’ – you’re almost there!",
+            "Okay! Let’s do this – Leg 5 is super exciting!\n\nPlace a ‘Forward’ card, then turn sharply to your left! Now move forward again – you're doing great!",
+            "Okay! Fantastic work on reaching leg 5 – you’re doing so well!\n\nLet's place these cards: forward, left turn, forward, forward, right turn, forward. \n\nThink about going a little bit to your right this time – it’s a clever move!",
+            "Okay! Let’s do this – you're amazing!\n\nPlace a ‘Forward’ card, then turn to your left a little bit. Now move forward again, that’s great work! \n\nNext, take another ‘Forward’ step – brilliant! Then, give a gentle right-hand twist. Finally, just one more ‘Forward’ to reach the end! You did it",
+            "Okay! We’re almost there – super exciting! Place a ‘forward’ card, then let's turn left a little bit.  \n\nNow put down another ‘forward,’ that’s fantastic! Then move forward again – you're doing great! \n\nTime for a twist – place a ‘right turn’ card now! Finally, just one more ‘forward’ to reach the"
+          ],
+          "success": [
+            "Wow, you did it! That was a brilliant turn – fantastic job!",
+            "Wow, you did it! That was a super clever turn – fantastic job! Let’s see where we go next!",
+            "Wow, you’re brilliant! That was a super clever route – let’s go to the finish line!",
+            "Wow, you did it! That was a super clever turn! Let’s zoom to the finish line!",
+            "Wow, you did it! That was a super clever turn – brilliant navigation!",
+            "Wow, you did it! That was a super clever turn, let’s go to the finish line!",
+            "Wow, you’re brilliant! That was a super clever turn – let’s go to the finish line!",
+            "Wow, you’re a super navigator! That was brilliant – let's zoom to the finish line!",
+            "Wow, you did it! That was brilliant navigation – let's go to the finish line!",
+            "Wow, you’re amazing! You cracked the code perfectly – fantastic job!"
+          ],
+          "wrong_order": [
+            "Wow, you’re doing so well! Those cards are absolutely perfect – brilliant choices! Just try shuffling them a little differently to find the right path!",
+            "Wow, you’re doing so great! Those cards are fantastic – you’ve got the right path! Let's shuffle them around a little bit to find the perfect order for leg five!",
+            "Wow, you’re doing so great! Those cards look fantastic – almost there! Let's shuffle them a little bit to find the perfect path!",
+            "Wow, you’re doing so great! Those cards are perfectly right – fantastic work! Let's shuffle them around a little to find the perfect path!",
+            "Wow, you’re doing fantastic! These cards are absolutely right – brilliant! Let's just shuffle them a little differently to reach the finish line!",
+            "Wow, you’re doing so well! These cards are perfectly right – fantastic work! Let's just shift them around a little to find the best path!",
+            "Wow, you’re doing so great! Those cards are absolutely perfect – brilliant choices! Let's just shuffle them around a little bit to get you to the finish line!",
+            "Wow, you’re doing so well! These cards are fantastic – you've got the right path! Let’s shuffle them around a little bit to find the perfect order for leg five!",
+            "Wow, you’re doing fantastic! Those cards are absolutely right – brilliant choices! Now let's just shuffle them a little differently to find the path!",
+            "Wow, you’re doing so great! Those cards are absolutely right – fantastic work! Let's shuffle them a little to find the perfect path!"
+          ],
+          "wrong_ids": [
+            "Wow, that’s a clever attempt! Let's see if we can find a new route – you can definitely try some other cards!  We just need to wiggle our way to the finish!",
+            "Wow, that’s a super interesting route! Let’s give it another go – time for some fresh ideas!  We can totally find the way to our destination!",
+            "Wow, that’s a super interesting path! Let’s give this leg a fresh start!  Perhaps we can find some new cards to guide us – it's an adventure!",
+            "Wow, that’s a clever try! Let's see if we can find a new path.  Maybe we need to shuffle our cards again – let’s explore some fresh directions!",
+            "Wow, that’s a super interesting path! Let's give it another whirl – maybe some new choices will lead us right to the finish line!",
+            "Wow, that’s a really interesting path you chose! Let’s see if we can find the right way forward – give those cards another look!",
+            "Wow, that’s a tricky turn! Let’s give this leg a fresh start!  Try mixing up the cards – you can do it!",
+            "Wow, that’s a clever try! Let’s give it another go – different routes are super exciting!  Pick some new cards; we can find the way!",
+            "Wow, that’s a tricky turn! Let’s give this leg a fresh start!  Pick some new cards – you've got this!",
+            "Wow, that’s a really interesting route! Let’s give it another go – wouldn’t it be fun to try some new cards? We can totally find the treasure together!"
+          ],
+          "returning": [
+            "Wow, you’ve been a super speedy explorer! That was an amazing journey back to base!",
+            "Wow, you’ve been a super speedy explorer! That was an amazing journey back to base!",
+            "Wow, you’re a super navigator – fantastic work!",
+            "Wow, you’re a super navigator – fantastic job returning safely!",
+            "Wonderful! You’ve been a super speedy explorer – hooray!",
+            "Wow, you’re a super navigator – fantastic work!",
+            "Wow, you’re a super navigator – fantastic job completing that leg! Let's zip back to base camp now!",
+            "Wow, you’re a super navigator – fantastic job returning to base!",
+            "Wow, you’re a super navigator – fantastic job returning to base!",
+            "Wonderful! You’ve navigated brilliantly – hooray for a speedy return!"
+          ]
+        }
+      }
+    ]
+  }
+}

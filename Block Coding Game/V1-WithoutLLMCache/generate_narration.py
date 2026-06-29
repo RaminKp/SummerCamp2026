@@ -7,7 +7,7 @@ The game will then load narration_cache.json instantly at startup.
 
 Usage:
     python3 generate_narration.py                     # use default model
-    python3 generate_narration.py --model qwen2.5:7b  # specify model
+    python3 generate_narration.py --model gemma3:4b   # specify model
     python3 generate_narration.py --force              # overwrite existing cache
 """
 
@@ -30,15 +30,16 @@ from maps import MAPS, ACTIVE_MAP_ID
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-OLLAMA_URL     = "http://localhost:11434/api/chat"
-DEFAULT_MODEL  = "qwen2.5:7b"
-CACHE_FILE     = os.path.join(os.path.dirname(os.path.abspath(__file__)), "narration_cache.json")
+OLLAMA_URL         = "http://localhost:11434/api/chat"
+DEFAULT_MODEL      = "gemma3:4b"
+DEFAULT_VARIATIONS = 10
+CACHE_FILE         = os.path.join(os.path.dirname(os.path.abspath(__file__)), "narration_cache.json")
 
 SYSTEM_PROMPT = (
     "You are Misty, a small friendly robot talking to a child (age 6-12) "
     "playing a navigation card game. You speak in short, warm, enthusiastic "
-    "sentences — 1 to 2 sentences maximum. Keep language simple and fun. "
-    "Do NOT use emojis, markdown, or special formatting — plain spoken text only."
+    "sentences - 1 to 2 sentences maximum. Keep language simple and fun. "
+    "Do NOT use emojis, markdown, or special formatting - plain spoken text only."
 )
 
 # ── Message types to generate per phase ──────────────────────────────────────
@@ -89,9 +90,15 @@ def _ollama_reachable() -> bool:
         return False
 
 
-def _ask(prompt: str, model: str) -> str:
-    """Send a single prompt to Ollama and return the response text."""
-    r = requests.post(OLLAMA_URL, json={
+def _ask(prompt: str, model: str, max_retries: int = 3) -> str:
+    """Send a single prompt to Ollama and return the response text.
+
+    Retries on 500 errors with exponential backoff — Ollama often returns 500
+    while a model is still loading into GPU/RAM memory.
+    """
+    import re
+
+    payload = {
         "model":    model,
         "messages": [
             {"role": "system",  "content": SYSTEM_PROMPT},
@@ -102,23 +109,38 @@ def _ask(prompt: str, model: str) -> str:
             "temperature": 0.8,
             "num_predict": 80,     # keep responses short
         },
-    }, timeout=120)
-    r.raise_for_status()
-    text = r.json()["message"]["content"].strip()
-    # Strip any <think>...</think> tags some models produce
-    import re
-    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
-    return text
+    }
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            r = requests.post(OLLAMA_URL, json=payload, timeout=180)
+            r.raise_for_status()
+            text = r.json()["message"]["content"].strip()
+            # Strip any <think>...</think> tags some models produce
+            text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+            return text
+        except requests.exceptions.HTTPError as e:
+            if r.status_code == 500 and attempt < max_retries:
+                wait = 5 * (2 ** (attempt - 1))   # 5s, 10s, 20s
+                print(f"\n      [WAIT] Ollama 500 error (model may still be loading). "
+                      f"Retrying in {wait}s... (attempt {attempt}/{max_retries})")
+                time.sleep(wait)
+            else:
+                raise
 
 
-def generate_for_map(map_id: int, model: str) -> dict:
-    """Generate narration for all checkpoints in a map."""
+def generate_for_map(map_id: int, model: str, variations: int = DEFAULT_VARIATIONS) -> dict:
+    """Generate narration for all checkpoints in a map.
+
+    Each message key gets `variations` unique lines stored as a list.
+    """
     game_map = MAPS[map_id]
     total    = len(game_map.checkpoints)
     result   = {
         "map_id":   map_id,
         "map_name": game_map.name,
         "model":    model,
+        "variations_per_key": variations,
         "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         "phases":   [],
     }
@@ -127,26 +149,35 @@ def generate_for_map(map_id: int, model: str) -> dict:
         phase    = i + 1
         location = cp.location
         moves    = _sequence_to_moves(cp.sequence)
-        msgs     = {}
+        msgs     = {}   # key -> list of variation strings
 
-        print(f"\n  Phase {phase}/{total} — {location}")
+        print(f"\n  Phase {phase}/{total} -- {location}")
 
         for key in MESSAGE_KEYS:
-            prompt = PROMPT_TEMPLATES[key].format(
+            base_prompt = PROMPT_TEMPLATES[key].format(
                 phase=phase, total=total, location=location, moves=moves,
             )
-            print(f"    Generating '{key}'...", end=" ", flush=True)
-            start = time.time()
-            try:
-                text = _ask(prompt, model)
-                elapsed = time.time() - start
-                msgs[key] = text
-                # Show a truncated preview
-                preview = text[:60] + "..." if len(text) > 60 else text
-                print(f"✓ ({elapsed:.1f}s) \"{preview}\"")
-            except Exception as e:
-                print(f"✗ Error: {e}")
-                msgs[key] = None   # will use hardcoded fallback at runtime
+            msgs[key] = []
+            print(f"    '{key}' [{variations} variations]:", flush=True)
+
+            for v in range(1, variations + 1):
+                # Ask for a unique variation each time
+                prompt = (
+                    base_prompt + f" This is variation {v} of {variations} "
+                    f"-- make it sound different from any previous attempts. "
+                    f"Be creative and use different words."
+                )
+                print(f"      {v}/{variations}...", end=" ", flush=True)
+                start = time.time()
+                try:
+                    text = _ask(prompt, model)
+                    elapsed = time.time() - start
+                    msgs[key].append(text)
+                    preview = text[:50] + "..." if len(text) > 50 else text
+                    print(f"OK ({elapsed:.1f}s) \"{preview}\"")
+                except Exception as e:
+                    print(f"FAIL Error: {e}")
+                    msgs[key].append(None)
 
         result["phases"].append({
             "phase":    phase,
@@ -176,9 +207,13 @@ def main():
         "--force", action="store_true",
         help="Overwrite existing cache file"
     )
+    parser.add_argument(
+        "--variations", type=int, default=DEFAULT_VARIATIONS,
+        help=f"Number of variations per message (default: {DEFAULT_VARIATIONS})"
+    )
     args = parser.parse_args()
 
-    # ── Pre-flight checks ────────────────────────────────────────────────
+    # -- Pre-flight checks ----------------------------------------------------
     if os.path.exists(CACHE_FILE) and not args.force:
         print(f"Cache file already exists: {CACHE_FILE}")
         print("Use --force to overwrite, or delete it manually.")
@@ -191,8 +226,9 @@ def main():
 
     print(f"{'='*60}")
     print(f"  NARRATION PRE-GENERATOR")
-    print(f"  Model : {args.model}")
-    print(f"  Output: {CACHE_FILE}")
+    print(f"  Model      : {args.model}")
+    print(f"  Variations : {args.variations} per message")
+    print(f"  Output     : {CACHE_FILE}")
     print(f"{'='*60}")
 
     # ── Determine which maps to generate ─────────────────────────────────
@@ -211,11 +247,11 @@ def main():
 
     for map_id in map_ids:
         game_map = MAPS[map_id]
-        print(f"\n{'─'*60}")
+        print(f"\n{'-'*60}")
         print(f"  Map {map_id}: {game_map.name} ({len(game_map.checkpoints)} phases)")
-        print(f"{'─'*60}")
+        print(f"{'-'*60}")
 
-        map_data = generate_for_map(map_id, args.model)
+        map_data = generate_for_map(map_id, args.model, args.variations)
         all_maps[str(map_id)] = map_data
 
     total_elapsed = time.time() - total_start
