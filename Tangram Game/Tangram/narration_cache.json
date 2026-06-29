@@ -1,0 +1,175 @@
+{
+  "buzz_no_board": [
+    "My sensors are just getting ready, let’s find those four pointy bits!",
+    "Hmm, let’s get a good look at those shapes – fantastic!",
+    "“Hmm, my eyes are still adjusting – let’s find those pointy bits!”",
+    "Hmm, my eyes are still adjusting – let’s find those lovely pointy bits!",
+    "Hmm, my eyes are a little blurry – let’s find those pointy bits!"
+  ],
+  "complete_intro": [
+    "Wow you did it You built the whole {name}! That’s fantastic!",
+    "Wow you did it! Building that {name} was super clever and really fun!",
+    "Wow {name}! You did a super clever job putting all those shapes together!",
+    "Wow look at that {name}! You are doing such a fantastic job building shapes!",
+    "Wow you did it! Building that {name} was super clever and really fun, wasn’t it?"
+  ],
+  "complete_no_timer": [
+    "Wow, you put all the tangram pieces together! That’s fantastic, {name}! Your score is now {score}.",
+    "Wow, you made the whole {name}! That’s fantastic – let's see your score of {score}!",
+    "Wow, you did it! That’s fantastic – your score is now {score} for the {name}!",
+    "Wow, you made the whole {name}! That’s fantastic, let's see your score of {score}!"
+  ],
+  "complete_with_timer": [
+    "Wow, you solved the {name} tangram so quickly! You’re doing a fantastic job, your score is now {score}!",
+    "Wow, you built the {name} puzzle so quickly! That was super clever – let’s see your score of {score}!",
+    "Wow, you solved the {name} tangram so quickly! Fantastic work, let’s see your score of {score}!",
+    "Wow, you solved the {name} puzzle so quickly! That’s fantastic work – your score is now {score}!",
+    "Wow, you solved the {name} tangram so quickly! You’re doing a fantastic job – let's see your score of {score}!"
+  ],
+  "empty_board": [
+    "Let’s find those shapes! Give them a try and push the button when you’re ready.",
+    "Let’s build something amazing together – can you add a few pieces now? Then give me a tap!",
+    "Let’s add those shapes to the table, and watch what happens when we push this button!",
+    "Let’s add those shapes to the puzzle, and watch what happens when we push this button!",
+    "Let’s build something amazing with these shapes – give them a try!"
+  ],
+  "goodbye": [
+    "You’re doing fantastic work, little builders! Let’s see what amazing shapes we can make next time!",
+    "Wow, that was super clever! Let’s keep building amazing shapes together soon!",
+    "That’s fantastic work creating shapes – let’s see what amazing pictures we can make together next time!",
+    "Wonderful work today, explorers! Let’s see what new shapes we can make together soon!",
+    "That’s fantastic work creating shapes – let's see what we can build together soon!"
+  ],
+  "hint_all_good": [
+    "That’s looking wonderful! Let’s see if it fits perfectly, press the big red button.",
+    "Let’s see how you did building those shapes – give the button a little push!",
+    "Let’s see how those shapes are fitting together – give it a try!",
+    "Let’s see how you did – give the button a good push to see if it fits!",
+    "Let’s see how you did – give that button a good press!"
+  ],
+  "hint_misplaced": [
+    "That {label} looks like it needs a new place to go, let’s see if we can find it!",
+    "Hmm, this little shape – the {label} – needs a new home! Let’s see if we can find it.",
+    "Let’s see if we can find a new home for this {label}, don't you think? Just give it a little wiggle!",
+    "Okay, let’s see if you can make that {label} fit perfectly – give it a little wiggle!",
+    "“Hmm, the {label} looks a little lost – let’s see if we can find its perfect place!”"
+  ],
+  "hint_missing": [
+    "Hmm, I haven’t spotted the {label} just yet! Let's see if we can find it and put it in place.",
+    "Hmm, let's have a look for {label} – could you try putting it somewhere now?",
+    "Let’s have another look for the {label} – could you try putting it somewhere now?",
+    "Hmm, let’s have a look for {label} – can you give it a try and see if you can fit it?",
+    "Hmm, let's have a look for {label} – can you try to put it where it fits?"
+  ],
+  "hint_no_board": [
+    "Hmm, let’s check those little squares – we need all four to fit perfectly!",
+    "Let’s check those little squares – are they all there to help us build?",
+    "Hmm, let’s take a peek at those little squares – do we see all four spots? Wonderful!",
+    "Hmm, let’s check those little squares – are they all facing up nicely?",
+    "Hmm, let’s check those little squares again – we need to see all four sides!"
+  ],
+  "hint_rotate": [
+    "The {label} is in the right place! Just give it a little turn."
+  ],
+  "instructions": [
+    "Okay, let’s put all the pieces in, then press {button_word} and I'll see if you did it right!",
+    "Let’s see if we can fit all the shapes inside! Press the button word {button_word} and I'll help you build it right.",
+    "Okay, let’s see if we can fit all the tangram shapes! Press {button_word} when you're done, and I’ll look to make sure it’s perfect.",
+    "Let’s see if we can fit all the shapes inside! Press {button_word} and I'll make sure you did a great job.",
+    "Okay, let’s see if we can fit all the shapes! Press {button_word} when you think you're done, and I’ll take a look!"
+  ],
+  "misplaced_multi": [
+    "{names}, let’s try turning those shapes a little differently, okay?",
+    "Let’s try a little wiggle, {names}! See if you can find a new place for those shapes!",
+    "Let's try a little wiggle, {names}! See if you can find a new place for those shapes.",
+    "{names}, let’s try shifting those shapes a little bit to see what happens!",
+    "{names}, let’s try turning those pieces around a little bit, hmm? It might just fit!"
+  ],
+  "misplaced_single": [
+    "Hmm, let’s try moving {names} to a better place, okay?",
+    "Let’s try that again, {names}! Maybe if you wiggle it a little bit, it will fit perfectly!",
+    "Let’s try moving {names} over there, that looks like a better fit!",
+    "Hmm, let’s try that again, {names}. Maybe if you slide it a little bit?",
+    "Let’s try moving {names} a little bit to see if that helps make the shape!"
+  ],
+  "newly_correct_multi": [
+    "That’s fantastic, {names}! You're all doing such a good job putting those shapes together!",
+    "That’s fantastic! {names}, you're doing such a wonderful job fitting all those shapes together.",
+    "That’s fantastic, {names}! You're building a wonderful picture together!",
+    "That’s fantastic, {names}! You’re building a wonderful picture together!",
+    "That’s fantastic, {names}! You're really making those shapes fit together so well!"
+  ],
+  "newly_correct_single": [
+    "That’s fantastic {names}! You found the perfect spot for that piece!",
+    "That’s wonderful {names}! You're doing a fantastic job finding that piece!",
+    "That’s wonderful {names}! You found the perfect spot for that piece!",
+    "That’s fantastic {names}! You got another shape perfectly!",
+    "That’s fantastic {names}! You found a perfect piece!"
+  ],
+  "nudge": [
+    "Let’s build something amazing together – why don't you pick a piece?",
+    "Let’s see what you can make! Just pick a shape and let's build together.",
+    "Let's see what you can build! Just pick a shape and let’s give it a go.",
+    "Let’s see what you can do! Just pick a shape and let's build together.",
+    "Let's see what you can do! Just pick a shape and let’s build something cool together."
+  ],
+  "progress": [
+    "That’s fantastic! You're doing so well, you have {n} pieces already!",
+    "That’s fantastic! You’re doing great with those {n} pieces – let's see what shapes we can make!",
+    "That’s fantastic! You're doing so well with these {n} pieces – let’s see what you can make!",
+    "That’s fantastic! You're doing so well with {n} pieces – let’s see what you can build next!",
+    "That’s fantastic! You're doing so well with these {n} shapes – let’s see what you can build next!"
+  ],
+  "rotate_multi": [
+    "These {names} look like they’re almost perfect – just a little turn for each one!",
+    "Those {names} look pretty close – let’s wiggle them a bit to see!",
+    "These {names} look great! Let’s just wiggle them a little bit to see if they fit perfectly.",
+    "“These {names} look like they’re almost perfect – let's just wiggle them a bit!”",
+    "Those {names} look pretty close – let’s wiggle them a little bit!"
+  ],
+  "rotate_single": [
+    "That’s great, {names}! Let's try turning it just a tiny bit!",
+    "Let’s try that again, {names}! Just a tiny wiggle might do the trick!",
+    "Hmm, {names} looks like it needs a tiny spin to find its place!",
+    "Let’s see if {names} fits better – try twisting it just a tiny bit!",
+    "Let’s try that again, {names}! Just a tiny spin might help you find its place."
+  ],
+  "time_left_final": [
+    "Only {seconds} seconds left, let's see if we can finish this puzzle together!",
+    "{seconds} left – you’re doing so great! Let's see if we can finish this tangram puzzle!",
+    "{seconds} left to make those shapes! You’re getting there, keep trying!",
+    "{seconds} left – you’re getting so close, let's see if we can finish this tangram!",
+    "{seconds} left! Let’s see if we can make those shapes fit – you're doing great!"
+  ],
+  "time_left_minutes": [
+    "{n} minutes still to go! You’re such a clever tangram builder!",
+    "{n} minutes still to go! Keep trying, you’re getting so close to finishing this puzzle!",
+    "{n} minutes still to go – you’re getting so clever with those shapes!",
+    "{n} minutes still to go – you’re working so smartly, let's see what you can make!",
+    "{n} minutes still to go, you’re a super tangram builder!"
+  ],
+  "time_left_one_minute": [
+    "That’s great work everyone, let’s see if we can finish it up now!",
+    "Let’s see if we can finish this puzzle before time runs out – you're doing great!",
+    "Let’s see if we can finish this puzzle before time runs out, you guys!",
+    "Let’s see if we can finish this puzzle before time runs out, you clever builders!",
+    "Let’s see if we can finish this puzzle before time runs out! You're doing great!"
+  ],
+  "time_up": [
+    "That’s okay, give it a whirl again! Let’s see if we can build it together now.",
+    "That’s okay! Let’s see if we can find a new way to make those shapes fit together.",
+    "That’s okay! Let’s see if we can find a new way to make those shapes fit together – give it another go!",
+    "That’s okay! Let's see if we can find a new way to make those shapes fit together.",
+    "That’s okay, let's see if we can find a new way to make those shapes fit!"
+  ],
+  "timer_intro": [
+    "Let's see if you can build that tangram in {duration}! Have fun and let’s get started with the {name}!"
+  ],
+  "welcome": [
+    "Wow, let’s build the {name} tangram! You guys are doing such a great job!",
+    "Wow, let’s see if we can make the {name} tangram! It's going to be so much fun building shapes!",
+    "“Wow, let’s see if we can make the {name} tangram! You guys are brilliant builders!”",
+    "“Wow, let’s see if we can make the {name} tangram! You guys are doing great!”",
+    "“Wow, let’s get started with the {name} tangram! I think we can make some amazing shapes!”"
+  ]
+}

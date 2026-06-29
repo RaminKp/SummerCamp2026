@@ -84,12 +84,12 @@ except ImportError:
 USE_MISTY_SDK       = False   # False = raw REST (no mistyPy install needed)
 LOCK_CORRECT_PIECES = True    # once a piece is correct it stays correct
 MAX_FACTS_PER_TURN  = 3       # cap educational facts spoken per buzzer press
-MISTY_VOLUME        = 80      # startup speaker volume
+MISTY_VOLUME        = 90      # startup speaker volume
 
 # ── Voice (Android TTS voice installed on the robot) ─────────────────────────
 MISTY_VOICE       = "en-us-x-sfg-local"
-MISTY_PITCH       = 0.85
-MISTY_SPEECH_RATE = 0.85     # <1 = slower (clearer for kids)
+MISTY_PITCH       = 1.0
+MISTY_SPEECH_RATE = 0.9       # <1 = slower (clearer for kids)
 
 # Optional local LLM rephrasing (only used with --llm-feedback).
 OLLAMA_MODEL = "qwen3:0.6b"   # your chosen small model; any Ollama tag works
