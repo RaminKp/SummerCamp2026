@@ -12,7 +12,10 @@ requests
 websocket-client
 
 # RFID hardware — rfid_test.py, detector.py, enrol_cards.py
-RPi.GPIO
+# rpi-lgpio is a drop-in replacement for RPi.GPIO (same "RPi.GPIO" import name)
+# that works on the Pi 5's BCM2712 SoC, which RPi.GPIO itself does not support.
+# Do not install both — they conflict.
+rpi-lgpio
 mfrc522
 
 # Computer vision + ArUco (used in misty.recalibrate_at_home)

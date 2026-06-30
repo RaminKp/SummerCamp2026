@@ -123,7 +123,7 @@ def _load_cache(map_id: int) -> list | None:
     if not os.path.exists(CACHE_FILE):
         return None
     try:
-        with open(CACHE_FILE, "r") as f:
+        with open(CACHE_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
         map_data = data.get(str(map_id))
         if map_data and "phases" in map_data:

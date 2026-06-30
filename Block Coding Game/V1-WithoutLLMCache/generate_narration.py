@@ -257,7 +257,7 @@ def main():
     total_elapsed = time.time() - total_start
 
     # ── Save cache ───────────────────────────────────────────────────────
-    with open(CACHE_FILE, "w") as f:
+    with open(CACHE_FILE, "w", encoding="utf-8") as f:
         json.dump(all_maps, f, indent=2, ensure_ascii=False)
 
     print(f"\n{'='*60}")
