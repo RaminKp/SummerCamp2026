@@ -48,24 +48,24 @@ MESSAGE_KEYS = ["hint", "success", "wrong_order", "wrong_ids", "returning"]
 
 PROMPT_TEMPLATES = {
     "hint": (
-        "It's leg {phase} of {total}. The child needs to navigate me to the {location}. "
+        "It's rouund {phase} of {total}. The child needs to navigate me to the {location}. "
         "The path requires these moves: {moves}. "
         "Tell them what cards to place — be encouraging and give a gentle clue about the directions."
     ),
     "success": (
-        "The child got the card sequence right for leg {phase}! I'm now heading to the {location}. "
+        "The child got the card sequence right for round {phase}! I'm now heading to the {location}. "
         "Say something excited and encouraging — 1-2 short sentences."
     ),
     "wrong_order": (
-        "The child placed the right cards but in the wrong order for getting to the {location} on leg {phase}. "
+        "The child placed the right cards but in the wrong order for getting to the {location} on round {phase}. "
         "Gently tell them the cards are correct but need rearranging — be encouraging."
     ),
     "wrong_ids": (
-        "The child used the wrong cards entirely for navigating to the {location} on leg {phase}. "
+        "The child used the wrong cards entirely for navigating to the {location} on round {phase}. "
         "Encourage them warmly to try different cards — don't make them feel bad."
     ),
     "returning": (
-        "I successfully visited the {location} on leg {phase} and now I'm heading back home. "
+        "I successfully visited the {location} on round {phase} and now I'm heading back home. "
         "Say something brief and happy about the trip — 1 sentence."
     ),
 }

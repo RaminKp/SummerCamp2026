@@ -18,7 +18,7 @@ def run_game():
     print(f"\n{'='*50}")
     print(f"  MISTY MAZE GAME")
     print(f"  Map : {active_map.name}")
-    print(f"  Legs: {total} phases")
+    print(f"  Rounds: {total} phases")
     print(f"{'='*50}\n")
 
     misty.disable_hazards()
@@ -30,7 +30,7 @@ def run_game():
     misty.led_ready()
     misty.speak(
         f"Welcome to the Misty Maze! Today's map is {active_map.name}. "
-        f"You have {total} legs to complete. Good luck!"
+        f"You have {total} rounds to complete. Good luck!"
     )
 
     for i, checkpoint in enumerate(active_map.checkpoints, 1):
@@ -84,12 +84,12 @@ def run_game():
                     misty.speak(msgs["returning"])
                     print(f"   Returning home...")
                     misty.execute_drive_map(checkpoint.return_map)
-
+                    misty.speak("Remove all the RFID tags now", True)
                 if is_last:
                     print("\n   Final phase complete!")
                     misty.celebrate()
                 else:
-                    misty.speak(f"Great work! On to leg {i + 1}.")
+                    misty.speak(f"Great work! On to Round {i + 1}.")
                 break
 
             elif result == ValidationResult.WRONG_ORDER:

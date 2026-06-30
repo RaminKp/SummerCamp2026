@@ -8,23 +8,29 @@ BASE_URL  = f"http://{MISTY_IP}/api"
 
 # ── ✏️  Calibration ────────────────────────────────────────────────────────────
 DRIVE_SPEED    = 35.0   # working value on this robot
-TURN_SPEED     = 20.0   # working value on this robot
+TURN_SPEED     = 40.0   # working value on this robot
 CM_PER_SECOND  = 20.0   # TODO: calibrate
 DEG_PER_SECOND = 15.17  # calibrated
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _post(endpoint: str, payload: dict) -> requests.Response:
-    try:
-        r = requests.post(f"{BASE_URL}/{endpoint}", json=payload, timeout=5)
-        r.raise_for_status()
-        return r
-    except requests.exceptions.ConnectionError:
-        raise ConnectionError(
-            f"Could not reach Misty at {MISTY_IP}. "
-            "Check her IP and that she's on the same network."
-        )
+def _post(endpoint: str, payload: dict, retries: int = 3) -> requests.Response:
+    for attempt in range(1, retries + 1):
+        try:
+            r = requests.post(f"{BASE_URL}/{endpoint}", json=payload, timeout=5)
+            r.raise_for_status()
+            return r
+        except requests.exceptions.ConnectionError:
+            raise ConnectionError(
+                f"Could not reach Misty at {MISTY_IP}. "
+                "Check her IP and that she's on the same network."
+            )
+        except (requests.exceptions.Timeout, requests.exceptions.HTTPError) as e:
+            if attempt == retries:
+                raise
+            print(f"    [retry {attempt}/{retries}] {endpoint} failed ({e}), retrying...")
+            time.sleep(0.2)
 
 
 def _cm_to_ms(cm: float) -> int:
