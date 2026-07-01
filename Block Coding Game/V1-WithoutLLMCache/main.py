@@ -1,13 +1,29 @@
 import misty
 import narrator
-from maps         import get_active_map
+from maps         import MAPS, get_active_map
 from detector     import run_detector
 from validator    import validate_and_message, ValidationResult
 from game_logger  import GameLogger
 
 
+def select_map():
+    available = {mid: m for mid, m in MAPS.items() if m.checkpoints}
+    if not available:
+        raise RuntimeError("No maps with checkpoints defined in maps.py.")
+
+    print("\nAvailable maps:")
+    for mid, m in available.items():
+        print(f"  [{mid}] {m.name}  ({len(m.checkpoints)} rounds)")
+
+    while True:
+        choice = input("\nSelect a map number: ").strip()
+        if choice.isdigit() and int(choice) in available:
+            return available[int(choice)]
+        print(f"  Please enter one of: {list(available.keys())}")
+
+
 def run_game():
-    active_map = get_active_map()
+    active_map = select_map()
     total      = len(active_map.checkpoints)
 
     player_name = input("Player name: ").strip() or "Unknown"
@@ -24,8 +40,8 @@ def run_game():
     misty.disable_hazards()
 
     print("\nLoading narration...")
-    from maps import ACTIVE_MAP_ID
-    narration = narrator.pre_generate(active_map.checkpoints, map_id=ACTIVE_MAP_ID)
+    map_id    = next(mid for mid, m in MAPS.items() if m is active_map)
+    narration = narrator.pre_generate(active_map.checkpoints, map_id=map_id)
 
     misty.led_ready()
     misty.speak(
