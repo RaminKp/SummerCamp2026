@@ -8,29 +8,38 @@ BASE_URL  = f"http://{MISTY_IP}/api"
 
 # ── ✏️  Calibration ────────────────────────────────────────────────────────────
 DRIVE_SPEED    = 35.0   # working value on this robot
-TURN_SPEED     = 40.0   # working value on this robot
+TURN_SPEED     = 20.0   # working value on this robot
 CM_PER_SECOND  = 20.0   # TODO: calibrate
 DEG_PER_SECOND = 15.17  # calibrated
+
+# Reuse one TCP connection for every request instead of a new handshake per
+# command — on a flaky/congested hotspot link the handshake itself is a
+# common point of packet loss.
+_session = requests.Session()
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _post(endpoint: str, payload: dict, retries: int = 3) -> requests.Response:
+def _post(endpoint: str, payload: dict, retries: int = 5) -> requests.Response:
+    last_err = None
     for attempt in range(1, retries + 1):
         try:
-            r = requests.post(f"{BASE_URL}/{endpoint}", json=payload, timeout=5)
+            r = _session.post(f"{BASE_URL}/{endpoint}", json=payload, timeout=5)
             r.raise_for_status()
             return r
-        except requests.exceptions.ConnectionError:
-            raise ConnectionError(
-                f"Could not reach Misty at {MISTY_IP}. "
-                "Check her IP and that she's on the same network."
-            )
-        except (requests.exceptions.Timeout, requests.exceptions.HTTPError) as e:
+        except (requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout,
+                requests.exceptions.HTTPError) as e:
+            last_err = e
             if attempt == retries:
-                raise
+                break
             print(f"    [retry {attempt}/{retries}] {endpoint} failed ({e}), retrying...")
             time.sleep(0.2)
+
+    raise ConnectionError(
+        f"Could not reach Misty at {MISTY_IP} after {retries} attempts "
+        f"({last_err}). Check her IP and that she's on the same network."
+    )
 
 
 def _cm_to_ms(cm: float) -> int:

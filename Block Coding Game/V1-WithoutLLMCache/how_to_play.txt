@@ -1,0 +1,42 @@
+HOW TO PLAY — MISTY MAZE
+=========================
+
+GOAL
+----
+Help Misty the robot navigate through the maze by placing the right
+cards in the right order!
+
+YOUR CARDS
+----------
+  Card 1 (GREEN)  =  Move FORWARD one step
+  Card 2 (BLUE)   =  Turn LEFT
+  Card 3 (RED)    =  Turn RIGHT
+
+HOW TO PLAY
+-----------
+1. Listen to Misty's hint — she'll tell you where she needs to go
+   and give you a clue about the directions.
+
+2. Choose your cards and place them in the card slots in order,
+   left to right (slot 1 = first move, slot 2 = second move, etc.).
+
+3. Press the button to submit your answer.
+
+4. If your sequence is CORRECT — Misty drives to the destination!
+
+5. If your cards are in the WRONG ORDER — rearrange them and try again.
+
+6. If you picked the WRONG CARDS — swap them out and try again.
+
+7. After each leg, remove all the cards from the slots
+   and get ready for the next round.
+
+Complete all legs to win the game. Good luck!
+
+EXAMPLE
+-------
+If Misty needs to go forward, then turn right, then go forward again:
+  Slot 1 -> Card 1 (forward)
+  Slot 2 -> Card 3 (right)
+  Slot 3 -> Card 1 (forward)
+  Then press the button!
