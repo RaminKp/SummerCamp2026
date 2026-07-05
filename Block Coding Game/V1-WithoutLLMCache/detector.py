@@ -77,12 +77,15 @@ def _ensure_init():
 
 # ── Core scanning loop ────────────────────────────────────────────────────────
 
-def _scan_loop(slots: list, done_event: threading.Event):
+def _scan_loop(slots: list, done_event: threading.Event,
+               first_tag_event: threading.Event | None = None):
     """Background thread: continuously poll readers.
 
     Slots are always live — placing a new card on a reader replaces whatever
     was there before, and removing a card clears the slot.
+    Sets first_tag_event the moment any card is first detected.
     """
+    first_seen = False
     while not done_event.is_set():
         for idx in range(N_READERS):
             name, reader = _readers[idx]
@@ -90,15 +93,16 @@ def _scan_loop(slots: list, done_event: threading.Event):
             prev = slots[idx]
 
             if uid and uid != prev:
-                # New or replacement card
                 slots[idx] = uid
                 game_id = _card_map.get(uid)
                 label = f"Game ID {game_id}" if game_id else f"UNKNOWN UID ({uid})"
                 filled = sum(1 for s in slots if s is not None)
                 action = "replaced" if prev else "placed"
                 print(f"  [Reader {idx+1}] {label} ({action})  ({filled}/{N_READERS} slots filled)")
+                if not first_seen and first_tag_event is not None:
+                    first_seen = True
+                    first_tag_event.set()
             elif not uid and prev:
-                # Card removed — clear the slot
                 slots[idx] = None
                 filled = sum(1 for s in slots if s is not None)
                 print(f"  [Reader {idx+1}] cleared  ({filled}/{N_READERS} slots filled)")
@@ -139,46 +143,55 @@ def wait_for_tags_removed(timeout: float = 60.0, clear_seconds: float = 1.5):
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-def run_detector(n_slots: int = N_READERS) -> list[int] | None:
+def run_detector(n_slots: int = N_READERS,
+                 first_tag_event: threading.Event | None = None,
+                 game_over_event: threading.Event | None = None) -> list[int] | None:
     """
     Wait for the player to tap RFID cards onto the readers, then submit with
     the physical button.
 
     Args:
-        n_slots: how many reader slots to monitor (default: all 6).
-                 Pass checkpoint.sequence length for tighter validation.
+        n_slots:          how many reader slots to monitor (default: all 6).
+        first_tag_event:  set the moment the first card is detected (starts timer).
+        game_over_event:  when set externally (timer expired), returns None immediately.
 
     Returns:
-        Ordered list of game-integer IDs (one per slot, 0 if a slot was left
-        empty), or None if the button was pressed with zero cards placed
-        (player aborts the game).
+        Ordered list of game-integer IDs, or None if aborted / game over.
+        Check game_over_event.is_set() after None to distinguish the two cases.
     """
     _ensure_init()
 
     slots: list[str | None] = [None] * n_slots
-    done_event = threading.Event()
+    done_event      = threading.Event()
     submitted_event = threading.Event()
 
     # Start background scanning thread
     scan_thread = threading.Thread(target=_scan_loop,
-                                   args=(slots, done_event),
+                                   args=(slots, done_event, first_tag_event),
                                    daemon=True)
     scan_thread.start()
 
-    # Start a thread that waits for the user to press Enter
+    # Unblock submitted_event when Enter is pressed
     def _wait_for_enter():
-        input()   # blocks until Enter is pressed
+        input()
         submitted_event.set()
 
     key_thread = threading.Thread(target=_wait_for_enter, daemon=True)
     key_thread.start()
+
+    # Also unblock if the game-over timer fires
+    def _watch_game_over():
+        if game_over_event is not None:
+            game_over_event.wait()
+            submitted_event.set()
+
+    threading.Thread(target=_watch_game_over, daemon=True).start()
 
     print()
     print("  Tap your RFID cards onto the readers (Reader 1 = step 1, etc.).")
     print("  Press ENTER to submit.")
     print()
 
-    # Block until Enter pressed
     submitted_event.wait()
 
     # Stop scan thread

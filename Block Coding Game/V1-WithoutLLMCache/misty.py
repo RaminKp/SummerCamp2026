@@ -8,14 +8,15 @@ BASE_URL  = f"http://{MISTY_IP}/api"
 
 # ── ✏️  Calibration ────────────────────────────────────────────────────────────
 DRIVE_SPEED    = 35.0   # working value on this robot
-TURN_SPEED     = 20.0   # working value on this robot
+TURN_SPEED     = 40.0   # increased for faster turns — recalibrate DEG_PER_SECOND
 CM_PER_SECOND  = 20.0   # TODO: calibrate
-DEG_PER_SECOND = 15.17  # calibrated
+DEG_PER_SECOND = 30.34  # TODO: recalibrate after changing TURN_SPEED (doubled estimate)
 
-# ── ✏️  Voice ──────────────────────────────────────────────────────────────────
-# Run GET /api/tts/voices on your Misty to see available voice names.
-# Common options: "Misty" (default), "en-US_MichaelVoice", "en-US_AllisonVoice"
-VOICE = "Misty"
+# ── ✏️  Voice / Audio ─────────────────────────────────────────────────────────
+VOICE        = "en-us-x-sfg-local"  # Android TTS voice installed on this robot
+PITCH        = 1.0                   # 1.0 = normal
+SPEECH_RATE  = 0.9                   # <1 = slower/clearer for kids
+VOLUME       = 90                    # speaker volume 0-100 (set once at startup)
 
 # Reuse one TCP connection for every request instead of a new handshake per
 # command — on a flaky/congested hotspot link the handshake itself is a
@@ -101,9 +102,16 @@ def stop():
 
 def speak(text: str, wait: bool = True):
     print(f"    \"{text}\"")
-    _post("tts/speak", {"Text": text, "Flush": True, "Voice": VOICE})
+    _post("tts/speak", {
+        "Text":       text,
+        "Flush":      True,
+        "Voice":      VOICE,
+        "Pitch":      PITCH,
+        "SpeechRate": SPEECH_RATE,
+    })
     if wait:
-        time.sleep(len(text) * 0.08 + 0.5)
+        words = max(1, len(text.split()))
+        time.sleep(words / (2.6 * SPEECH_RATE) + 0.5)
 
 
 # ── LED ───────────────────────────────────────────────────────────────────────
@@ -118,6 +126,10 @@ def led_win():     led(255, 180, 0)   # gold
 
 
 # ── Hazards ───────────────────────────────────────────────────────────────────
+
+def set_volume(level: int = VOLUME):
+    _post("audio/volume", {"Volume": level})
+
 
 def disable_hazards():
     print("  Disabling hazard sensors...")
