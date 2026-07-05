@@ -78,20 +78,63 @@ def _ensure_init():
 # ── Core scanning loop ────────────────────────────────────────────────────────
 
 def _scan_loop(slots: list, done_event: threading.Event):
-    """Background thread: poll all readers and lock in UIDs as cards are tapped."""
+    """Background thread: continuously poll readers.
+
+    Slots are always live — placing a new card on a reader replaces whatever
+    was there before, and removing a card clears the slot.
+    """
     while not done_event.is_set():
         for idx in range(N_READERS):
-            if slots[idx] is not None:
-                continue   # already locked
             name, reader = _readers[idx]
             uid = rfid_reader.scan_once(name, reader)
-            if uid:
+            prev = slots[idx]
+
+            if uid and uid != prev:
+                # New or replacement card
                 slots[idx] = uid
                 game_id = _card_map.get(uid)
                 label = f"Game ID {game_id}" if game_id else f"UNKNOWN UID ({uid})"
                 filled = sum(1 for s in slots if s is not None)
-                print(f"  [Reader {idx+1}] {label}  ({filled}/{N_READERS} slots filled)")
+                action = "replaced" if prev else "placed"
+                print(f"  [Reader {idx+1}] {label} ({action})  ({filled}/{N_READERS} slots filled)")
+            elif not uid and prev:
+                # Card removed — clear the slot
+                slots[idx] = None
+                filled = sum(1 for s in slots if s is not None)
+                print(f"  [Reader {idx+1}] cleared  ({filled}/{N_READERS} slots filled)")
+
         time.sleep(POLL_INTERVAL)
+
+
+# ── Tag-removal gate ──────────────────────────────────────────────────────────
+
+def wait_for_tags_removed(timeout: float = 60.0, clear_seconds: float = 1.5):
+    """Block until all readers report empty for `clear_seconds` in a row.
+
+    Gives players time to physically remove all RFID cards before the next
+    round starts. Times out after `timeout` seconds regardless.
+    """
+    _ensure_init()
+    print("\n  [RFID] Waiting for all tags to be removed...")
+    deadline    = time.time() + timeout
+    clear_since = None
+
+    while time.time() < deadline:
+        all_empty = all(
+            rfid_reader.scan_once(name, reader) is None
+            for name, reader in _readers
+        )
+        if all_empty:
+            if clear_since is None:
+                clear_since = time.time()
+            elif time.time() - clear_since >= clear_seconds:
+                print("  [RFID] All tags removed — continuing.")
+                return
+        else:
+            clear_since = None
+        time.sleep(POLL_INTERVAL)
+
+    print("  [RFID] Timeout waiting for tag removal — continuing anyway.")
 
 
 # ── Public API ────────────────────────────────────────────────────────────────

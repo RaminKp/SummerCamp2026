@@ -1,7 +1,7 @@
 import misty
 import narrator
 from maps         import MAPS, get_active_map
-from detector     import run_detector
+from detector     import run_detector, wait_for_tags_removed
 from validator    import validate_and_message, ValidationResult
 from game_logger  import GameLogger
 
@@ -101,6 +101,7 @@ def run_game():
                     print(f"   Returning home...")
                     misty.execute_drive_map(checkpoint.return_map)
                     misty.speak("Remove all the RFID tags now", True)
+                    wait_for_tags_removed()
                 if is_last:
                     print("\n   Final phase complete!")
                     misty.celebrate()

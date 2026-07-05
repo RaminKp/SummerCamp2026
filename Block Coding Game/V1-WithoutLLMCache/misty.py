@@ -12,6 +12,11 @@ TURN_SPEED     = 20.0   # working value on this robot
 CM_PER_SECOND  = 20.0   # TODO: calibrate
 DEG_PER_SECOND = 15.17  # calibrated
 
+# ── ✏️  Voice ──────────────────────────────────────────────────────────────────
+# Run GET /api/tts/voices on your Misty to see available voice names.
+# Common options: "Misty" (default), "en-US_MichaelVoice", "en-US_AllisonVoice"
+VOICE = "Misty"
+
 # Reuse one TCP connection for every request instead of a new handshake per
 # command — on a flaky/congested hotspot link the handshake itself is a
 # common point of packet loss.
@@ -95,8 +100,8 @@ def stop():
 # ── Speech ────────────────────────────────────────────────────────────────────
 
 def speak(text: str, wait: bool = True):
-    print(f"    🗣  \"{text}\"")
-    _post("tts/speak", {"Text": text, "Flush": True})
+    print(f"    \"{text}\"")
+    _post("tts/speak", {"Text": text, "Flush": True, "Voice": VOICE})
     if wait:
         time.sleep(len(text) * 0.08 + 0.5)
 
