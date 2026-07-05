@@ -10,7 +10,7 @@ BASE_URL  = f"http://{MISTY_IP}/api"
 DRIVE_SPEED    = 35.0   # working value on this robot
 TURN_SPEED     = 40.0   # increased for faster turns — recalibrate DEG_PER_SECOND
 CM_PER_SECOND  = 20.0   # TODO: calibrate
-DEG_PER_SECOND = 30.34  # TODO: recalibrate after changing TURN_SPEED (doubled estimate)
+DEG_PER_SECOND = 22.75  # recalibrated for TURN_SPEED=40
 
 # ── ✏️  Voice / Audio ─────────────────────────────────────────────────────────
 VOICE        = "en-us-x-sfg-local"  # Android TTS voice installed on this robot

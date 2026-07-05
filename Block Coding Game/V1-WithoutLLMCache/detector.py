@@ -171,12 +171,22 @@ def run_detector(n_slots: int = N_READERS,
                                    daemon=True)
     scan_thread.start()
 
-    # Unblock submitted_event when Enter is pressed
-    def _wait_for_enter():
-        input()
+    # Unblock submitted_event when Space is pressed
+    def _wait_for_space():
+        import tty, termios
+        fd = sys.stdin.fileno()
+        old = termios.tcgetattr(fd)
+        try:
+            tty.setraw(fd)
+            while True:
+                ch = sys.stdin.read(1)
+                if ch in (' ', '\r', '\n'):
+                    break
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old)
         submitted_event.set()
 
-    key_thread = threading.Thread(target=_wait_for_enter, daemon=True)
+    key_thread = threading.Thread(target=_wait_for_space, daemon=True)
     key_thread.start()
 
     # Also unblock if the game-over timer fires
@@ -189,7 +199,7 @@ def run_detector(n_slots: int = N_READERS,
 
     print()
     print("  Tap your RFID cards onto the readers (Reader 1 = step 1, etc.).")
-    print("  Press ENTER to submit.")
+    print("  Press SPACE to submit.")
     print()
 
     submitted_event.wait()

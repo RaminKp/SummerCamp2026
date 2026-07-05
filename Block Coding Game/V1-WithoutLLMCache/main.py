@@ -96,7 +96,7 @@ def run_game():
             if game_over_event.is_set():
                 break
 
-            print(f"\n   [Attempt {attempts + 1}] Waiting for cards — press ENTER to submit...")
+            print(f"\n   [Attempt {attempts + 1}] Waiting for cards — press SPACE to submit...")
             logger.begin_checkpoint_attempt()
 
             scanned = run_detector(

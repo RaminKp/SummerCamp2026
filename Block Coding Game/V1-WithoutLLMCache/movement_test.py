@@ -6,10 +6,10 @@ import requests
 MISTY_IP       = "10.42.0.197"  # update if changed
 BASE_URL       = f"http://{MISTY_IP}/api"
 
-DRIVE_SPEED    = 45.0
-TURN_SPEED     = 20.0
-CM_PER_SECOND  = 22.0   # update after calibration
-DEG_PER_SECOND = 15.0   # calibrated
+DRIVE_SPEED    = 35.0
+TURN_SPEED     = 40.0   # increased — run this script to recalibrate DEG_PER_SECOND
+CM_PER_SECOND  = 20.0
+DEG_PER_SECOND = 22.75  # recalibrated for TURN_SPEED=40
 
 # ── ✏️  EDIT HERE ─────────────────────────────────────────────────────────────
 
