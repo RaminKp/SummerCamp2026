@@ -1,9 +1,32 @@
 import RPi.GPIO as GPIO
-from mfrc522 import MFRC522
 import time, os
 
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
+
+# rpi-lgpio's GPIO.setup() reads the pin's current level to pick a default
+# `initial` when none is given -- but that read fails with "GPIO not allocated"
+# on a pin that hasn't been claimed yet (i.e. every pin, the first time it's
+# set up). Always supplying `initial` avoids that internal read. This also
+# patches the setup call the mfrc522 library itself makes for the RST pin.
+#
+# Separately: rpi-lgpio actually claims each GPIO line via the kernel gpiochip
+# interface, so re-running setup() on an already-claimed line (e.g. the RST
+# pin, which every reader's __init__ tries to set up since it's shared)
+# raises "GPIO busy" -- classic RPi.GPIO tolerated redundant setup() calls,
+# this backend doesn't. Track claimed channels and skip re-claiming them.
+_orig_setup = GPIO.setup
+_setup_pins = set()
+def _patched_setup(channel, direction, pull_up_down=GPIO.PUD_OFF, initial=None):
+    if channel in _setup_pins:
+        return
+    if direction == GPIO.OUT and initial is None:
+        initial = GPIO.HIGH
+    _orig_setup(channel, direction, pull_up_down, initial)
+    _setup_pins.add(channel)
+GPIO.setup = _patched_setup
+
+from mfrc522 import MFRC522
 
 RST_SHARED = 25  # one RST wired to all six readers
 
@@ -25,17 +48,21 @@ class SoftCSReader(MFRC522):
         GPIO.output(cs_pin, GPIO.HIGH)        # start deselected
         super().__init__(bus=bus, device=device, spd=spd,
                          pin_mode=GPIO.BCM, pin_rst=pin_rst)
+
+    def Write_MFRC522(self, addr, val):
         try:
             self.spi.no_cs = True             # suppress any hardware CS assertion
         except Exception:
             pass
-
-    def Write_MFRC522(self, addr, val):
         GPIO.output(self.cs_pin, GPIO.LOW)
         self.spi.xfer2([(addr << 1) & 0x7E, val])
         GPIO.output(self.cs_pin, GPIO.HIGH)
 
     def Read_MFRC522(self, addr):
+        try:
+            self.spi.no_cs = True             # suppress any hardware CS assertion
+        except Exception:
+            pass
         GPIO.output(self.cs_pin, GPIO.LOW)
         val = self.spi.xfer2([((addr << 1) & 0x7E) | 0x80, 0])
         GPIO.output(self.cs_pin, GPIO.HIGH)
