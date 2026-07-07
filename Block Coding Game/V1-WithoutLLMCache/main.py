@@ -199,6 +199,7 @@ def run_game(map_id: int, active_map, players: list[dict]):
 
                 if is_last:
                     print("\n   Final round complete!")
+                    game_over_event.set()   # stop the 8-min timer
                     misty.celebrate()
                 else:
                     misty.speak(f"Great work! On to Round {i + 1}.")
