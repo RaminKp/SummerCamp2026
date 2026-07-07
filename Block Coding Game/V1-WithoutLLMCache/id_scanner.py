@@ -82,34 +82,41 @@ def _player_from_id(aruco_id: int, users: dict) -> dict | None:
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def wait_for_players(n: int = 2) -> list[dict]:
-    """Poll Misty's camera until `n` unique registered players are detected.
+    """Prompt the facilitator to type each player's ID number.
 
-    Returns a list of n player dicts ordered by scan time.
+    Looks up each ID in users.json. Keeps asking until n valid IDs are entered.
+    Returns a list of n player dicts ordered by entry.
     """
-    users          = _load_users()
+    users         = _load_users()
     players_found: list[dict] = []
     ids_seen: set[int]        = set()
 
     print(f"\n{'='*50}")
-    print(f"  Waiting for {n} players to scan their ID cards...")
-    print(f"  (Hold card up to Misty's camera)")
+    print(f"  PLAYER CHECK-IN  ({n} players)")
     print(f"{'='*50}\n")
 
     while len(players_found) < n:
-        frame = _grab_misty_frame()
-        if frame is not None:
-            for aruco_id in _detect_aruco(frame):
-                if aruco_id not in ids_seen:
-                    player = _player_from_id(aruco_id, users)
-                    if player:
-                        ids_seen.add(aruco_id)
-                        players_found.append(player)
-                        slot = len(players_found)
-                        print(f"  Player {slot} scanned: {player['name']} (ID {aruco_id})")
-                        if slot < n:
-                            print(f"  Waiting for Player {slot + 1}...")
+        slot = len(players_found) + 1
+        raw  = input(f"  Enter Player {slot} ID: ").strip()
 
-        time.sleep(POLL_INTERVAL)
+        if not raw.isdigit():
+            print("  Please enter a number.")
+            continue
+
+        aruco_id = int(raw)
+
+        if aruco_id in ids_seen:
+            print(f"  ID {aruco_id} already entered — use a different ID.")
+            continue
+
+        player = _player_from_id(aruco_id, users)
+        if player is None:
+            print(f"  ID {aruco_id} not found in users.json (or consent=false) — try again.")
+            continue
+
+        ids_seen.add(aruco_id)
+        players_found.append(player)
+        print(f"  ✓ Player {slot}: {player['name']} (ID {aruco_id})\n")
 
     return players_found
 
