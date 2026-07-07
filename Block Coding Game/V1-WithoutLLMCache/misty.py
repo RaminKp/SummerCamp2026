@@ -76,21 +76,21 @@ def turn_left(degrees: float):
     ms = _deg_to_ms(degrees)
     print(f"    → turn left {degrees}° ({ms}ms)")
     _post("drive/time", {"LinearVelocity": 0, "AngularVelocity": TURN_SPEED, "TimeMs": ms})
-    time.sleep(ms / 1000 + 0.7)
+    time.sleep(ms / 1000 + 0.5)
 
 
 def turn_right(degrees: float):
     ms = _deg_to_ms(degrees)
     print(f"    → turn right {degrees}° ({ms}ms)")
     _post("drive/time", {"LinearVelocity": 0, "AngularVelocity": -TURN_SPEED, "TimeMs": ms})
-    time.sleep(ms / 1000 + 0.7)
+    time.sleep(ms / 1000 + 0.5)
 
 
 def turn_180():
     ms = _deg_to_ms(180)
     print(f"    → turn 180° ({ms}ms)")
     _post("drive/time", {"LinearVelocity": 0, "AngularVelocity": TURN_SPEED, "TimeMs": ms})
-    time.sleep(ms / 1000 + 0.7)
+    time.sleep(ms / 1000 + 0.5)
 
 
 def stop():
