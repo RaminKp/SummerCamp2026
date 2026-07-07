@@ -30,19 +30,10 @@ def select_map():
         print(f"  Please enter one of: {list(available.keys())}")
 
 
-def _return_misty_home(cp: Checkpoint, map_id: int, drove_out: bool = False):
-    """Execute the path that returns Misty to Home(0,0) on Map 2.
-
-    drove_out: True when drive_map completed but return_map has not run yet.
-               In that case we execute return_map first (turn_180), then home.
-    """
-    if map_id != 2:
-        return
+def _return_misty_home(cp: Checkpoint, drove_out: bool = False):
+    """If Misty drove out but hasn't returned yet, run the return_map now."""
     if drove_out and cp.return_map:
         misty.execute_drive_map(cp.return_map)
-    if cp.return_home_map:
-        misty.speak("Time is up! I am heading back home now.")
-        misty.execute_drive_map(cp.return_home_map)
 
 
 def run_game(map_id: int, active_map, players: list[dict]):
@@ -94,7 +85,6 @@ def run_game(map_id: int, active_map, players: list[dict]):
     narrator.prefetch(1, total, checkpoints[0].location, checkpoints[0].sequence)
 
     # ── Game loop ─────────────────────────────────────────────────────────────
-    last_completed_cp: Checkpoint | None = None  # Map 2: last fully executed cp
     outcome = "Completed"
 
     for i, checkpoint in enumerate(checkpoints, 1):
@@ -103,19 +93,6 @@ def run_game(map_id: int, active_map, players: list[dict]):
         if game_over_event.is_set():
             outcome = "TimeUp"
             break
-
-        # Map 2: silently drive to this checkpoint's starting position when
-        # intermediate checkpoints were skipped by the randomiser.
-        if checkpoint.auto_transit:
-            print(f"\n   [Auto-transit] Moving to starting position for {checkpoint.location}...")
-            misty.speak(f"I am on my way to the {checkpoint.location} area now!")
-            misty.execute_drive_map(checkpoint.auto_transit)
-            if game_over_event.is_set():
-                _return_misty_home(
-                    last_completed_cp or checkpoint, map_id, drove_out=False
-                )
-                outcome = "TimeUp"
-                break
 
         print(f"\n── Round {i} of {total} ──────────────────────────────")
         print(f"   Location   : {checkpoint.location}")
@@ -181,18 +158,17 @@ def run_game(map_id: int, active_map, players: list[dict]):
                 misty.execute_drive_map(checkpoint.drive_map)
 
                 if game_over_event.is_set():
-                    _return_misty_home(checkpoint, map_id, drove_out=True)
+                    _return_misty_home(checkpoint, drove_out=True)
                     outcome = "TimeUp"
                     break
 
                 if checkpoint.return_map:
                     misty.speak(narrator.live(i, total, checkpoint.location,
                                               checkpoint.sequence, "returning"))
-                    print(f"   Returning...")
+                    print(f"   Returning home...")
                     misty.execute_drive_map(checkpoint.return_map)
 
                     if game_over_event.is_set():
-                        _return_misty_home(checkpoint, map_id, drove_out=False)
                         outcome = "TimeUp"
                         break
 
@@ -206,8 +182,6 @@ def run_game(map_id: int, active_map, players: list[dict]):
                         recorder.stop()
                         id_scanner.update_play_counts(players)
                         return
-
-                last_completed_cp = checkpoint
 
                 if game_over_event.is_set():
                     outcome = "TimeUp"
@@ -241,9 +215,6 @@ def run_game(map_id: int, active_map, players: list[dict]):
         print(f"\n{'='*50}")
         print("  TIME'S UP — GAME OVER")
         print(f"{'='*50}\n")
-        # Map 2: return Misty home from last completed checkpoint
-        if map_id == 2 and last_completed_cp is not None:
-            _return_misty_home(last_completed_cp, map_id, drove_out=False)
         misty.led_error()
         misty.speak(f"Time is up! Amazing effort {p1} and {p2}. Goodbye!")
         misty.led(0, 0, 0)
