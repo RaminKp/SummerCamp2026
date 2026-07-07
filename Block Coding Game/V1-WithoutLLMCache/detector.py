@@ -71,7 +71,6 @@ def _ensure_init():
         print("[RFID] Initialising six readers...")
         GPIO.setmode(GPIO.BCM)
         GPIO.setwarnings(False)
-        GPIO.setup(BUZZER_PIN, GPIO.OUT, initial=GPIO.LOW)
         _readers = rfid_reader.build_readers()
         print("[RFID] Readers ready.")
     _card_map = _load_card_map()
