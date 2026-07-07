@@ -14,7 +14,7 @@ GAME_DURATION = 8 * 60   # 480 seconds
 
 
 def select_map():
-    available = {mid: m for mid, m in MAPS.items() if m.checkpoints}
+    available = {mid: m for mid, m in MAPS.items() if m.checkpoints or m.paths}
     if not available:
         raise RuntimeError("No maps with checkpoints defined in maps.py.")
 
