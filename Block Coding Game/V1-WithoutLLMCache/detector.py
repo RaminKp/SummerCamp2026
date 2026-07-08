@@ -139,7 +139,8 @@ def run_detector(n_slots: int = N_READERS,
                  first_tag_event: threading.Event | None = None,
                  game_over_event: threading.Event | None = None,
                  inactivity_callback=None,
-                 inactivity_secs: float = 30.0,
+                 inactivity_secs: float = 10.0,
+                 inactivity_repeat_secs: float = 20.0,
                  card_placed_callback=None,
                  no_cards_callback=None) -> list[int] | None:
     """
@@ -184,13 +185,14 @@ def run_detector(n_slots: int = N_READERS,
 
     threading.Thread(target=_watch_game_over, daemon=True).start()
 
-    # Fires inactivity reminder after inactivity_secs with no press
+    # Fires inactivity reminder after inactivity_secs, then every repeat_secs
     if inactivity_callback is not None:
         def _inactivity_timer():
             time.sleep(inactivity_secs)
-            if not done_event.is_set():
+            while not done_event.is_set():
                 if game_over_event is None or not game_over_event.is_set():
                     inactivity_callback()
+                time.sleep(inactivity_repeat_secs)
         threading.Thread(target=_inactivity_timer, daemon=True).start()
 
     # Per-card live feedback — detect new cards as they are placed
