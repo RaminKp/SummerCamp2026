@@ -88,7 +88,7 @@ def run_game(map_id: int, active_map, players: list[dict]):
 
     misty.led_ready()
     misty.speak(f"Welcome {p1} and {p2}! I am so excited to play with you today!")
-    misty.speak(f"We are playing {active_map.name} today — {total} missions ahead!")
+    misty.speak(f"We are playing Misty Maze today — {total} missions ahead!")
 
     # Turn to face the children for the briefing
     misty.turn_180()
