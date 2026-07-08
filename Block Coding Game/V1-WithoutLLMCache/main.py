@@ -88,22 +88,21 @@ def run_game(map_id: int, active_map, players: list[dict]):
 
     misty.led_ready()
     misty.speak(f"Welcome {p1} and {p2}! I am so excited to play with you today!")
-    misty.speak(f"We are playing {active_map.name} today — {total} missions ahead!")
+    misty.speak(f"We are playing Misty Maze today — {total} missions ahead!")
 
-    # Turn to face the children for the briefing
-    misty.turn_180()
-    misty.head(pitch=-40)   # tilt up ~45° to make eye contact with kids
-
+    # Misty is already facing the children from startup — no turn needed here
     misty.speak(
         f"{p1} and {p2}, today we are going on {total} special missions to reach "
         "different destinations. I need your help to find the right path. "
         "Once each mission starts, use the cards to guide me step by step across the map. "
+        "Forward means I move one cell ahead. Left and Right cards turn me in that direction. "
+        "Please do not touch the black walls — they are part of the maze! "
         "Let's work together, choose the best route, and help me reach each destination. "
         "Ready, mission team? Let's go!"
     )
 
     misty.head(pitch=0)     # return head to neutral
-    misty.turn_180()        # face the maze again
+    misty.turn_180()        # face the maze
 
     # ── Game loop ─────────────────────────────────────────────────────────────
     outcome              = "Completed"

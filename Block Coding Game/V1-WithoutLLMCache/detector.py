@@ -19,6 +19,37 @@ import queue
 import threading
 from pathlib import Path
 
+# ── Module-level stdin reader (started once, avoids per-call thread races) ────
+# Each run_detector() registers its press_queue here; keypresses are dispatched
+# to whichever queue is currently active. Only one thread ever owns stdin.
+_active_press_queue: queue.Queue | None = None
+_active_press_queue_lock = threading.Lock()
+_stdin_thread_started    = False
+
+def _start_stdin_thread():
+    global _stdin_thread_started
+    if _stdin_thread_started:
+        return
+    _stdin_thread_started = True
+
+    def _reader():
+        import tty, termios
+        fd  = sys.stdin.fileno()
+        old = termios.tcgetattr(fd)
+        tty.setraw(fd)
+        try:
+            while True:
+                ch = sys.stdin.read(1)
+                if ch in (' ', '\r', '\n'):
+                    with _active_press_queue_lock:
+                        q = _active_press_queue
+                    if q is not None:
+                        q.put('press')
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old)
+
+    threading.Thread(target=_reader, daemon=True).start()
+
 import RPi.GPIO as GPIO
 
 # ── Allow importing rfid_reader from the RFID sensor folder ───────────────────
@@ -161,21 +192,11 @@ def run_detector(n_slots: int = N_READERS,
                          args=(done_event, first_tag_event),
                          daemon=True).start()
 
-    # Puts 'press' on the queue for every green-button press (loops for retries)
-    def _wait_for_space():
-        import tty, termios
-        fd = sys.stdin.fileno()
-        old = termios.tcgetattr(fd)
-        try:
-            tty.setraw(fd)
-            while not done_event.is_set():
-                ch = sys.stdin.read(1)
-                if ch in (' ', '\r', '\n'):
-                    press_queue.put('press')
-        finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old)
-
-    threading.Thread(target=_wait_for_space, daemon=True).start()
+    # Register this call's press_queue with the global stdin dispatcher
+    global _active_press_queue
+    _start_stdin_thread()
+    with _active_press_queue_lock:
+        _active_press_queue = press_queue
 
     # Unblocks queue if game-over timer fires
     def _watch_game_over():
@@ -220,6 +241,8 @@ def run_detector(n_slots: int = N_READERS,
 
         if event == 'game_over' or (game_over_event and game_over_event.is_set()):
             done_event.set()
+            with _active_press_queue_lock:
+                _active_press_queue = None
             return None
 
         snapshot = _read_snapshot()
@@ -234,6 +257,8 @@ def run_detector(n_slots: int = N_READERS,
                 continue
             print("[RFID] No cards on second press — aborting.")
             done_event.set()
+            with _active_press_queue_lock:
+                _active_press_queue = None
             return None
 
         done_event.set()
@@ -253,6 +278,10 @@ def run_detector(n_slots: int = N_READERS,
     # Trim trailing zeros
     while result and result[-1] == 0:
         result.pop()
+
+    # Deregister queue so stray keypresses don't reach the next round
+    with _active_press_queue_lock:
+        _active_press_queue = None
 
     print(f"[RFID] Submitted sequence: {result}")
     return result

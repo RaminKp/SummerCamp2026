@@ -100,13 +100,33 @@ def connect_ws():
 
 
 def _wait_stopped(fallback_ms: int):
-    """Wait until Misty reports zero velocity, or fall back to sleep + buffer."""
-    if _WS_AVAILABLE and _ws_app is not None:
-        timeout = fallback_ms / 1000 + WS_STOP_TIMEOUT
-        if not _stopped_event.wait(timeout=timeout):
-            print(f"  [WS] Stop timeout after {timeout:.1f}s — continuing.")
-    else:
+    """Wait until Misty reports zero velocity, or fall back to sleep + buffer.
+
+    First waits up to 1s for the robot to actually START moving (nonzero
+    velocity seen on WS). If movement is never detected, the WS message was
+    lost — fall back to a timed sleep for this command only, leaving the
+    event state clean for the next command.
+    """
+    if not (_WS_AVAILABLE and _ws_app is not None):
         time.sleep(fallback_ms / 1000 + 0.5)
+        return
+
+    # Wait for movement to begin (proves WS is tracking this command)
+    start = time.time()
+    while not _ws_moving and time.time() - start < 1.0:
+        time.sleep(0.05)
+
+    if not _ws_moving:
+        # WS missed the movement start — sleep for the commanded duration
+        print("  [WS] Movement not detected — sleep fallback for this command.")
+        _stopped_event.set()   # leave event in a clean (set) state
+        time.sleep(fallback_ms / 1000 + 0.5)
+        return
+
+    # Movement confirmed — wait for Misty to stop
+    timeout = fallback_ms / 1000 + WS_STOP_TIMEOUT
+    if not _stopped_event.wait(timeout=timeout):
+        print(f"  [WS] Stop timeout after {timeout:.1f}s — continuing.")
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
