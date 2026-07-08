@@ -108,10 +108,10 @@ def _wait_for_face(cap, face_cascade) -> bool:
 def wait_for_players(n: int = 2) -> list[dict]:
     """Scan ArUco ID cards via USB webcam until n valid players are detected.
 
-    Phase 1 — face detection: wait until a face appears, then Misty greets
-    the child and asks them to hold up their ID card.
-    Phase 2 — ArUco scan: require STABLE_FRAMES consecutive frames with the
-    same marker before accepting. Speak a welcome after each accepted card.
+    Phase 1 — face detection: wait once for someone to approach, then greet.
+    Phase 2 — ArUco scan: scan each player's ID card one at a time with a
+    direct prompt per slot. No second face-detection round — avoids the race
+    where player 1's face triggers another greeting before player 2 scans.
     Falls back to keyboard entry if no webcam is available.
     """
     users = _load_users()
@@ -135,20 +135,21 @@ def wait_for_players(n: int = 2) -> list[dict]:
     ids_seen: set[int]        = set()
 
     try:
+        # ── Phase 1: wait for someone to approach (once only) ─────────────────
+        _wait_for_face(cap, face_cascade)
+        misty.speak(
+            "Hello there! I can see you! "
+            "Both players, please get ready to show me your ID cards!"
+        )
+
+        # ── Phase 2: scan each player's ID card in turn ───────────────────────
         while len(players_found) < n:
             slot = len(players_found) + 1
+            print(f"  Hold Player {slot}'s ID card up to the webcam...")
+            misty.speak(f"Player {slot}, please hold your ID card up to the camera!")
 
-            # ── Phase 1: wait for face ────────────────────────────────────────
-            _wait_for_face(cap, face_cascade)
-            misty.speak(
-                "Hello there! I can see you! "
-                "Please hold your ID card up to the camera so I know who you are!"
-            )
-
-            # ── Phase 2: scan ArUco ID ────────────────────────────────────────
             last_id      = None
             stable_count = 0
-            print(f"  Hold Player {slot}'s ID card up to the webcam...")
 
             while True:
                 ret, frame = cap.read()
@@ -175,27 +176,26 @@ def wait_for_players(n: int = 2) -> list[dict]:
                             player = _player_from_id(aruco_id, users)
                             if player is None:
                                 print(f"  ID {aruco_id} not registered — try another card.")
-                                misty.speak(
-                                    "Hmm, I don't recognise that card. "
-                                    "Try a different ID card!"
-                                )
+                                misty.speak("Hmm, I don't recognise that card. Try another!")
                                 last_id      = None
                                 stable_count = 0
-                            else:
-                                ids_seen.add(aruco_id)
-                                players_found.append(player)
-                                name = player["name"]
-                                print(f"  ✓ Player {slot}: {name} (ID {aruco_id})\n")
-                                misty.speak(
-                                    f"Welcome, {name}! "
-                                    "I am so happy to have you on the mission team!"
-                                )
-                                time.sleep(1.5)   # pause so card can be lowered before next scan
-                            break
+                                # stay in inner loop — wait for a valid card
+                                continue
+                            ids_seen.add(aruco_id)
+                            players_found.append(player)
+                            name = player["name"]
+                            print(f"  ✓ Player {slot}: {name} (ID {aruco_id})\n")
+                            misty.speak(
+                                f"Welcome, {name}! "
+                                "I am so happy to have you on the mission team!"
+                            )
+                            time.sleep(1.0)   # brief pause before next slot
+                            break             # accepted — exit for loop
                     else:
+                        # for loop completed without break (no new valid marker)
                         time.sleep(POLL_INTERVAL)
-                        continue
-                    break
+                        continue             # keep scanning
+                    break                   # for loop broke — card accepted, exit while
                 else:
                     last_id      = None
                     stable_count = 0
