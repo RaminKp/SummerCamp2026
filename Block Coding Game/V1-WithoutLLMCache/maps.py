@@ -26,10 +26,10 @@ class Map:
 
 # ── ✏️  EDIT HERE ─────────────────────────────────────────────────────────────
 
-DISTANCE = 30   # cm per forward step
+DISTANCE = 35   # cm per forward step
 TURN     = 90   # degrees per turn
 
-# ── Grid reference (1 unit = DISTANCE = 30 cm, Home = origin, North = up) ──
+# ── Grid reference (1 unit = DISTANCE = 35 cm, Home = origin, North = up) ──
 #
 #   Park(-2,2)  Ice-cream(-1,2)  School(0,2)
 #        J2(-2,1)   ──   J1(-1,1)   ──   J0(0,1)      ← junction row (horizontal highway)

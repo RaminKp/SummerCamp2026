@@ -42,23 +42,23 @@ _SYSTEM = (
 
 _LIVE_PROMPTS = {
     "hint": (
-        "Mission {phase} of {total}. Destination: {location}. Moves needed: {moves}. "
-        "Give ONE encouraging clue that hints at the path — under 12 words."
+        "Mission {phase} of {total}. Destination is the {location}. Moves needed: {moves}. "
+        "Give ONE clue that mentions '{location}' by name — under 12 words."
     ),
     "success": (
-        "Children solved mission {phase} — heading to {location}. "
-        "One very excited sentence under 10 words."
+        "Children solved mission {phase} — Misty is heading to the {location} now. "
+        "Say '{location}' in your excited sentence — under 10 words."
     ),
     "wrong_order": (
         "Right cards but wrong order, mission {phase} going to {location}. Moves are: {moves}. "
-        "Give a helpful hint about which move should come first — under 12 words."
+        "Mention '{location}' and hint which move comes first — under 12 words."
     ),
     "wrong_ids": (
         "Wrong cards chosen, mission {phase} going to {location}. Correct moves are: {moves}. "
-        "Give a warm encouraging hint about which card types are needed — under 12 words."
+        "Mention '{location}' and hint which card types are needed — under 12 words."
     ),
     "returning": (
-        "Just arrived at {location}, mission {phase}. Thank the children for helping. "
+        "Just arrived at {location}, mission {phase}. Thank the children and say '{location}'. "
         "One excited sentence under 10 words."
     ),
 }

@@ -1,37 +1,21 @@
 """
 detector.py  (RFID edition)
 ---------------------------
-Replaces the ArUco/webcam detector with six MFRC522 RFID readers.
+Six MFRC522 RFID readers on SPI with software chip-select.
 
-Interface is identical to the original:
-    run_detector() -> list[int] | None
+run_detector() -> list[int] | None
 
-        Returns an ordered list of game-integer IDs (one per reader slot)
-        when the player presses ENTER/SPACE to submit,
-        or None if the player submits with no cards placed (abort).
+    Returns an ordered list of game-integer IDs when the player presses the
+    green button, or None if the game was aborted/timed out.
 
-Physical interaction
---------------------
-  • Reader 1 = slot 1 (first step), … Reader 6 = slot 6 (sixth step).
-  • The player taps cards onto whichever readers correspond to their intended
-    sequence; each slot "locks in" on first tap and is shown in the terminal.
-  • When ready, the player presses ENTER (or SPACE then ENTER) in the terminal
-    to submit whatever is currently locked in.
-  • Submitting with ZERO slots filled quits the game (like pressing Q
-    with ArUco).
-
-Configuration
--------------
-  CARD_MAP_PATH  – JSON file produced by enrol_cards.py
-  N_READERS      – how many readers to poll (set to sequence length or 6)
-
-Run standalone to test outside the game:
-    python detector.py
+    Pressing the green button with NO cards twice in a row quits the game.
+    The first empty press prompts the player to try again.
 """
 
 import sys
 import json
 import time
+import queue
 import threading
 from pathlib import Path
 
@@ -44,19 +28,18 @@ import rfid_reader
 # ── Config ────────────────────────────────────────────────────────────────────
 
 CARD_MAP_PATH = Path(__file__).parent / "card_map.json"
-N_READERS     = 6          # poll all six readers every round
-POLL_INTERVAL = 0.05       # seconds between full scan cycles
-BUZZER_PIN    = 18         # BCM GPIO for piezo buzzer (active HIGH)
+N_READERS     = 6
+POLL_INTERVAL = 0.05
+BUZZER_PIN    = 18
 
 
-# ── Module-level state (initialised lazily on first call) ─────────────────────
-_readers: list | None = None   # list of (name, SoftCSReader)
+# ── Module-level state ────────────────────────────────────────────────────────
+_readers: list | None = None
 _card_map: dict[str, int] = {}
 _spi_lock = threading.Lock()   # prevents concurrent scan_once calls from multiple threads
 
 
 def _load_card_map() -> dict[str, int]:
-    """Load the UID→game-ID mapping produced by enrol_cards.py."""
     if not CARD_MAP_PATH.exists():
         raise FileNotFoundError(
             f"Card map not found at {CARD_MAP_PATH}.\n"
@@ -66,7 +49,6 @@ def _load_card_map() -> dict[str, int]:
 
 
 def _ensure_init():
-    """Lazy initialisation — called once on the first run_detector() call."""
     global _readers, _card_map
     if _readers is None:
         print("[RFID] Initialising six readers...")
@@ -76,7 +58,6 @@ def _ensure_init():
 
 
 def _buzz(duration: float = 0.1):
-    """Beep the physical buzzer for `duration` seconds."""
     try:
         GPIO.output(BUZZER_PIN, GPIO.HIGH)
         time.sleep(duration)
@@ -89,8 +70,6 @@ def _buzz(duration: float = 0.1):
 
 def _first_tag_watcher(done_event: threading.Event,
                        first_tag_event: threading.Event):
-    """Lightweight background thread — only watches for the very first card tap
-    so the game timer can start. Stops as soon as first_tag_event is set."""
     while not done_event.is_set() and not first_tag_event.is_set():
         with _spi_lock:
             for name, reader in _readers:
@@ -103,7 +82,6 @@ def _first_tag_watcher(done_event: threading.Event,
 # ── Snapshot read ─────────────────────────────────────────────────────────────
 
 def _read_snapshot() -> list[str | None]:
-    """Read all readers once and return their current UIDs (or None)."""
     with _spi_lock:
         result = []
         for name, reader in _readers:
@@ -115,7 +93,6 @@ def _read_snapshot() -> list[str | None]:
 # ── Tag-removal gate ──────────────────────────────────────────────────────────
 
 def _wait_clear(timeout: float, clear_seconds: float = 1.5) -> bool:
-    """Return True once all readers are empty for clear_seconds in a row."""
     deadline    = time.time() + timeout
     clear_since = None
     while time.time() < deadline:
@@ -137,15 +114,6 @@ def _wait_clear(timeout: float, clear_seconds: float = 1.5) -> bool:
 
 
 def wait_for_tags_removed(speak_fn=None) -> str:
-    """Block until all RFID readers are empty, with escalating warnings.
-
-    Args:
-        speak_fn: optional callable(text) for audio output (e.g. misty.speak).
-
-    Returns:
-        'ok'        — all tags removed within the allowed window.
-        'powerdown' — tags remained after two warnings; caller should end session.
-    """
     _ensure_init()
 
     def _say(text: str):
@@ -172,62 +140,55 @@ def run_detector(n_slots: int = N_READERS,
                  game_over_event: threading.Event | None = None,
                  inactivity_callback=None,
                  inactivity_secs: float = 30.0,
-                 card_placed_callback=None) -> list[int] | None:
+                 card_placed_callback=None,
+                 no_cards_callback=None) -> list[int] | None:
     """
-    Wait for the player to place RFID cards in the slots, then submit with
-    the green button.
+    Wait for the player to place cards and press the green button.
 
-    Args:
-        n_slots:               how many slots to monitor (default: all 6).
-        first_tag_event:       set the moment the first card is detected (starts timer).
-        game_over_event:       when set externally (timer expired), returns None immediately.
-        card_placed_callback:  called as callback(slot_index, game_id) whenever a new
-                               card appears in a slot — use for live per-card feedback.
-
-    Returns:
-        Ordered list of game-integer IDs, or None if aborted / game over.
-        Check game_over_event.is_set() after None to distinguish the two cases.
+    First empty press: calls no_cards_callback and waits for another press.
+    Second empty press: returns None (game abort).
+    game_over_event set: returns None immediately.
     """
     _ensure_init()
 
-    done_event      = threading.Event()
-    submitted_event = threading.Event()
+    done_event  = threading.Event()
+    press_queue: queue.Queue = queue.Queue()
 
-    # Background thread only watches for first card (starts game timer)
+    # Background thread: watches for first card to start game timer
     if first_tag_event is not None and not first_tag_event.is_set():
         threading.Thread(target=_first_tag_watcher,
                          args=(done_event, first_tag_event),
                          daemon=True).start()
 
-    # Unblock submitted_event when Space / green button is pressed
+    # Puts 'press' on the queue for every green-button press (loops for retries)
     def _wait_for_space():
         import tty, termios
         fd = sys.stdin.fileno()
         old = termios.tcgetattr(fd)
         try:
             tty.setraw(fd)
-            while True:
+            while not done_event.is_set():
                 ch = sys.stdin.read(1)
                 if ch in (' ', '\r', '\n'):
-                    break
+                    press_queue.put('press')
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old)
-        submitted_event.set()
 
     threading.Thread(target=_wait_for_space, daemon=True).start()
 
-    # Also unblock if the game-over timer fires
+    # Unblocks queue if game-over timer fires
     def _watch_game_over():
         if game_over_event is not None:
             game_over_event.wait()
-            submitted_event.set()
+            press_queue.put('game_over')
 
     threading.Thread(target=_watch_game_over, daemon=True).start()
 
-    # After inactivity_secs with no submission, fire the reminder callback
+    # Fires inactivity reminder after inactivity_secs with no press
     if inactivity_callback is not None:
         def _inactivity_timer():
-            if not submitted_event.wait(timeout=inactivity_secs):
+            time.sleep(inactivity_secs)
+            if not done_event.is_set():
                 if game_over_event is None or not game_over_event.is_set():
                     inactivity_callback()
         threading.Thread(target=_inactivity_timer, daemon=True).start()
@@ -251,19 +212,32 @@ def run_detector(n_slots: int = N_READERS,
     print("  Press the green button when ready.")
     print()
 
-    submitted_event.wait()
-    done_event.set()
+    empty_presses = 0
+    while True:
+        event = press_queue.get()
 
-    # Snapshot: read all readers at the moment Space was pressed
-    snapshot = _read_snapshot()
-    print(f"  [RFID] Snapshot: {snapshot}")
+        if event == 'game_over' or (game_over_event and game_over_event.is_set()):
+            done_event.set()
+            return None
 
-    # If zero cards present → abort
-    if all(uid is None for uid in snapshot):
-        print("[RFID] No cards detected — aborting game.")
-        return None
+        snapshot = _read_snapshot()
+        print(f"  [RFID] Snapshot: {snapshot}")
 
-    # Translate UIDs → game integers
+        if all(uid is None for uid in snapshot):
+            empty_presses += 1
+            if empty_presses < 2:
+                print("[RFID] No cards — prompting retry.")
+                if no_cards_callback:
+                    no_cards_callback()
+                continue
+            print("[RFID] No cards on second press — aborting.")
+            done_event.set()
+            return None
+
+        done_event.set()
+        break
+
+    # Translate UIDs to game integers
     result: list[int] = []
     for idx, uid in enumerate(snapshot):
         if uid is None:
@@ -287,7 +261,7 @@ def run_detector(n_slots: int = N_READERS,
 if __name__ == "__main__":
     print("=" * 50)
     print("  detector.py — standalone RFID test")
-    print("  Tap cards, then press the submit button.")
+    print("  Place cards, then press the green button.")
     print("=" * 50)
 
     result = run_detector()

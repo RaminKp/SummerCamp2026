@@ -160,6 +160,9 @@ def run_game(map_id: int, active_map, players: list[dict]):
                 ),
                 inactivity_secs=30.0,
                 card_placed_callback=_on_card_placed,
+                no_cards_callback=lambda: misty.speak(
+                    "I don't see any cards! Place your cards in the slots and try again."
+                ),
             )
 
             if game_over_event.is_set():
