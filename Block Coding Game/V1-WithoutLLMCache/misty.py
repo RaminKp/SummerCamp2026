@@ -93,6 +93,12 @@ def turn_180():
     time.sleep(ms / 1000 + 0.5)
 
 
+def head(pitch: float = 0, roll: float = 0, yaw: float = 0, velocity: float = 60):
+    """Move Misty's head. Pitch: negative = up, positive = down (range ~-40 to 26)."""
+    _post("head", {"Pitch": pitch, "Roll": roll, "Yaw": yaw, "Velocity": velocity})
+    time.sleep(0.5)
+
+
 def stop():
     print("    → stop")
     _post("drive/stop", {})
