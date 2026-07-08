@@ -14,7 +14,7 @@ DEG_PER_SECOND = 15.17
 
 # ── ✏️  Voice / Audio ─────────────────────────────────────────────────────────
 VOICE        = "en-us-x-sfg-local"  # Android TTS voice installed on this robot
-PITCH        = 1.0                   # 1.0 = normal
+PITCH        = 1.2                   # >1 = higher pitch (clearer for young kids)
 SPEECH_RATE  = 0.75                  # <1 = slower/clearer for kids
 VOLUME       = 90                    # speaker volume 0-100 (set once at startup)
 
@@ -76,21 +76,27 @@ def turn_left(degrees: float):
     ms = _deg_to_ms(degrees)
     print(f"    → turn left {degrees}° ({ms}ms)")
     _post("drive/time", {"LinearVelocity": 0, "AngularVelocity": TURN_SPEED, "TimeMs": ms})
-    time.sleep(ms / 1000 + 0.3)
+    time.sleep(ms / 1000 + 0.5)
 
 
 def turn_right(degrees: float):
     ms = _deg_to_ms(degrees)
     print(f"    → turn right {degrees}° ({ms}ms)")
     _post("drive/time", {"LinearVelocity": 0, "AngularVelocity": -TURN_SPEED, "TimeMs": ms})
-    time.sleep(ms / 1000 + 0.3)
+    time.sleep(ms / 1000 + 0.5)
 
 
 def turn_180():
     ms = _deg_to_ms(180)
     print(f"    → turn 180° ({ms}ms)")
     _post("drive/time", {"LinearVelocity": 0, "AngularVelocity": TURN_SPEED, "TimeMs": ms})
-    time.sleep(ms / 1000 + 0.3)
+    time.sleep(ms / 1000 + 0.5)
+
+
+def head(pitch: float = 0, roll: float = 0, yaw: float = 0, velocity: float = 60):
+    """Move Misty's head. Pitch: negative = up, positive = down (range ~-40 to 26)."""
+    _post("head", {"Pitch": pitch, "Roll": roll, "Yaw": yaw, "Velocity": velocity})
+    time.sleep(0.5)
 
 
 def stop():
@@ -148,7 +154,7 @@ def enable_hazards():
 
 def celebrate():
     led_win()
-    speak("Congratulations! You solved the maze. Thanks for playing!")
+    speak("Congratulations, mission team! All missions complete — you are incredible!")
     _post("head", {"Pitch": -10, "Roll": 0, "Yaw": 0, "Velocity": 60})
     time.sleep(0.4)
     _post("head", {"Pitch": 10, "Roll": 0, "Yaw": 0, "Velocity": 60})
@@ -223,6 +229,7 @@ def execute_drive_map(drive_map: list[tuple]):
             stop()
         else:
             raise ValueError(f"Unknown drive command: '{action}'")
+    stop()   # ensure Misty halts fully after the last command
 
 
 # ── Connection test ───────────────────────────────────────────────────────────

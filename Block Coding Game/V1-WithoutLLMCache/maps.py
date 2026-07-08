@@ -42,7 +42,7 @@ TURN     = 90   # degrees per turn
 
 MAPS: dict[int, Map] = {
     1: Map(
-        name   = "Map 1 — Out and Back",
+        name   = "The six to eight game",
         map_id = 1,
         checkpoints = [
 
@@ -162,7 +162,7 @@ MAPS: dict[int, Map] = {
     ),
 
     2: Map(
-        name   = "Map 2 — Waypoints",
+        name   = "nine to twelves",
         map_id = 2,
         checkpoints = [],   # unused for Map 2; paths is used instead
         # ── Map 2 rules ────────────────────────────────────────────────────────
