@@ -88,7 +88,7 @@ def run_game(map_id: int, active_map, players: list[dict]):
 
     misty.led_ready()
     misty.speak(f"Welcome {p1} and {p2}! I am so excited to play with you today!")
-    misty.speak(f"Today's map is {active_map.name} with {total} rounds.")
+    misty.speak(f"We are playing {active_map.name} today — {total} missions ahead!")
 
     # Turn to face the children for the briefing
     misty.turn_180()
@@ -116,13 +116,31 @@ def run_game(map_id: int, active_map, players: list[dict]):
             outcome = "TimeUp"
             break
 
-        print(f"\n── Round {i} of {total} ──────────────────────────────")
+        print(f"\n── Mission {i} of {total} ──────────────────────────────")
         print(f"   Location   : {checkpoint.location}")
         print(f"   Sequence   : {checkpoint.sequence}")
 
         misty.led_ready()
         misty.speak(narrator.live(i, total, checkpoint.location, checkpoint.sequence, "hint"))
-        misty.speak("Place your cards in the slots and press the buzzer when you are ready!")
+        misty.speak("Place your cards in the slots and press the green button when you are ready!")
+
+        # Live per-card feedback: if a placed card is wrong for that slot, say so
+        _move_names = {1: "Forward", 2: "Turn Left", 3: "Turn Right"}
+        _alerted_slots: set[int] = set()
+
+        def _on_card_placed(slot_idx: int, game_id: int,
+                            seq=checkpoint.sequence):
+            if slot_idx in _alerted_slots:
+                return
+            if slot_idx >= len(seq) or game_id == 0:
+                return
+            if game_id != seq[slot_idx]:
+                _alerted_slots.add(slot_idx)
+                expected_name = _move_names.get(seq[slot_idx], "the right card")
+                misty.speak(
+                    f"Hmm, slot {slot_idx + 1} might be wrong! "
+                    f"Try {expected_name} there!"
+                )
 
         attempts = 0
         while True:
@@ -130,16 +148,18 @@ def run_game(map_id: int, active_map, players: list[dict]):
                 outcome = "TimeUp"
                 break
 
-            print(f"\n   [Attempt {attempts + 1}] Waiting for cards — press SPACE to submit...")
+            _alerted_slots.clear()
+            print(f"\n   [Attempt {attempts + 1}] Waiting for cards — press green button to submit...")
             logger.begin_checkpoint_attempt()
 
             scanned = run_detector(
                 first_tag_event=first_tag_event,
                 game_over_event=game_over_event,
                 inactivity_callback=lambda: misty.speak(
-                    "Don't forget to place your cards in the slots and press the buzzer!"
+                    "Don't forget to place your cards in the slots and press the green button!"
                 ),
                 inactivity_secs=30.0,
+                card_placed_callback=_on_card_placed,
             )
 
             if game_over_event.is_set():
@@ -209,11 +229,11 @@ def run_game(map_id: int, active_map, players: list[dict]):
                     break
 
                 if is_last:
-                    print("\n   Final round complete!")
+                    print("\n   Final mission complete!")
                     game_over_event.set()   # stop the 8-min timer
                     misty.celebrate()
                 else:
-                    misty.speak(f"Great work! On to Round {i + 1}.")
+                    misty.speak(f"Great work! Get ready for Mission {i + 1}!")
                 break
 
             elif result == ValidationResult.WRONG_ORDER:
@@ -242,7 +262,7 @@ def run_game(map_id: int, active_map, players: list[dict]):
         if map_id == 2 and last_completed_cp is not None:
             _return_misty_home(last_completed_cp, map_id, drove_out=False)
         misty.led_error()
-        misty.speak(f"Time is up! Amazing effort {p1} and {p2}. Goodbye!")
+        misty.speak(f"Time is up! You were an amazing mission team, {p1} and {p2}. See you next time!")
         misty.led(0, 0, 0)
         logger.end(outcome="TimeUp")
     else:

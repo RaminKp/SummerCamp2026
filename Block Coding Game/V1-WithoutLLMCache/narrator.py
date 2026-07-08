@@ -32,54 +32,61 @@ LIVE_TIMEOUT     = 6.0    # seconds for sync fallback generation
 PREFETCH_TIMEOUT = 12.0   # generous timeout for game-start pre-generation
 
 _SYSTEM = (
-    "You are Misty, a small friendly robot talking to a child aged 6 to 12 "
-    "who is playing a navigation card game. "
+    "You are Misty, a small friendly robot talking to children aged 6 to 12 "
+    "who are playing a navigation card game called Mission Maze. "
     "Reply with ONE short sentence only — under 12 words. "
-    "Simple words, warm and fun. No emojis, no lists, no markdown."
+    "Simple words, warm and fun. No emojis, no lists, no markdown. "
+    "IMPORTANT: Always use the exact destination name given to you — never invent "
+    "synonyms or alternative names for it (e.g. never say 'kitchen' instead of 'Restaurant')."
 )
 
 _LIVE_PROMPTS = {
     "hint": (
-        "Round {phase} of {total}. Destination: {location}. Moves: {moves}. "
-        "Give ONE short clue under 12 words."
+        "Mission {phase} of {total}. Destination: {location}. Moves needed: {moves}. "
+        "Give ONE encouraging clue that hints at the path — under 12 words."
     ),
     "success": (
-        "Child solved round {phase} — heading to {location}. "
-        "One excited sentence under 10 words."
+        "Children solved mission {phase} — heading to {location}. "
+        "One very excited sentence under 10 words."
     ),
     "wrong_order": (
-        "Right cards, wrong order, round {phase} to {location}. "
-        "One gentle nudge under 10 words."
+        "Right cards but wrong order, mission {phase} going to {location}. Moves are: {moves}. "
+        "Give a helpful hint about which move should come first — under 12 words."
     ),
     "wrong_ids": (
-        "Wrong cards, round {phase} to {location}. "
-        "One warm encourage under 10 words."
+        "Wrong cards chosen, mission {phase} going to {location}. Correct moves are: {moves}. "
+        "Give a warm encouraging hint about which card types are needed — under 12 words."
     ),
     "returning": (
-        "Just arrived at {location}, round {phase}. Say thanks to the children for helping. "
+        "Just arrived at {location}, mission {phase}. Thank the children for helping. "
         "One excited sentence under 10 words."
     ),
 }
 
 # ── Fallbacks (location-aware, used when Ollama result unavailable) ───────────
 
-def _fallback(key: str, phase: int, location: str, total: int = 3) -> str:
+def _fallback(key: str, phase: int, location: str, total: int = 3,
+              sequence: list | None = None) -> str:
     is_last = (phase == total)
+    _move_names = {1: "Forward", 2: "Turn Left", 3: "Turn Right"}
+    first_move = _move_names.get((sequence or [0])[0], "Forward") if sequence else "Forward"
     return {
         "hint": (
-            f"Place your cards in the right order to send me to the {location}!"
+            f"Mission {phase}! I need to reach the {location} — "
+            f"think carefully about which cards to use!"
         ),
         "success": (
-            f"Amazing! I am heading to the {location} right now!"
+            f"Amazing! On my way to the {location} right now — great teamwork!"
         ),
         "wrong_order": (
-            "Those cards are right but in the wrong order — rearrange them and try again!"
+            f"You have the right cards! Try starting with {first_move} in slot one!"
         ),
         "wrong_ids": (
-            f"Those cards will not get me to the {location} — try a different set!"
+            f"Those cards won't reach the {location}. "
+            f"Think about how many Forwards and turns you need!"
         ),
         "returning": (
-            f"Thank you for helping! I made it home — well done, everyone!"
+            "Thank you for helping! Mission complete — I made it home!"
             if is_last
             else f"Thank you for helping! I arrived at the {location}!"
         ),
@@ -87,14 +94,14 @@ def _fallback(key: str, phase: int, location: str, total: int = 3) -> str:
 
 
 _INTRO_FALLBACK = {
-    "welcome": "Hello friends! Welcome to the Misty Maze!",
+    "welcome": "Hello friends! Welcome to Mission Maze!",
     "how_to_play": (
         "You have six card slots in front of you. "
         "The Forward card moves me ahead one step. "
         "The Left card turns me to my left. "
         "The Right card turns me to my right. "
         "Place your cards in order from slot one to six to build a path, "
-        "then press the big button to send me on my way!"
+        "then press the green button to send me on my way!"
     ),
     "good_luck": "I am so excited — let's go and explore together!",
 }
@@ -236,4 +243,4 @@ def live(phase: int, total: int, location: str, sequence: list, key: str) -> str
         phase=phase, total=total, location=location, moves=moves
     )
     text = _call_ollama(prompt, timeout=LIVE_TIMEOUT)
-    return text or _fallback(key, phase, location, total)
+    return text or _fallback(key, phase, location, total, sequence)

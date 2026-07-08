@@ -167,15 +167,18 @@ def run_detector(n_slots: int = N_READERS,
                  first_tag_event: threading.Event | None = None,
                  game_over_event: threading.Event | None = None,
                  inactivity_callback=None,
-                 inactivity_secs: float = 30.0) -> list[int] | None:
+                 inactivity_secs: float = 30.0,
+                 card_placed_callback=None) -> list[int] | None:
     """
-    Wait for the player to tap RFID cards onto the readers, then submit with
-    the physical button.
+    Wait for the player to place RFID cards in the slots, then submit with
+    the green button.
 
     Args:
-        n_slots:          how many reader slots to monitor (default: all 6).
-        first_tag_event:  set the moment the first card is detected (starts timer).
-        game_over_event:  when set externally (timer expired), returns None immediately.
+        n_slots:               how many slots to monitor (default: all 6).
+        first_tag_event:       set the moment the first card is detected (starts timer).
+        game_over_event:       when set externally (timer expired), returns None immediately.
+        card_placed_callback:  called as callback(slot_index, game_id) whenever a new
+                               card appears in a slot — use for live per-card feedback.
 
     Returns:
         Ordered list of game-integer IDs, or None if aborted / game over.
@@ -192,7 +195,7 @@ def run_detector(n_slots: int = N_READERS,
                          args=(done_event, first_tag_event),
                          daemon=True).start()
 
-    # Unblock submitted_event when Space is pressed; beep buzzer to confirm
+    # Unblock submitted_event when Space / green button is pressed
     def _wait_for_space():
         import tty, termios
         fd = sys.stdin.fileno()
@@ -225,9 +228,23 @@ def run_detector(n_slots: int = N_READERS,
                     inactivity_callback()
         threading.Thread(target=_inactivity_timer, daemon=True).start()
 
+    # Per-card live feedback — detect new cards as they are placed
+    if card_placed_callback is not None:
+        def _card_watcher():
+            prev = [None] * n_slots
+            while not done_event.is_set():
+                current = _read_snapshot()
+                for idx, (old_uid, new_uid) in enumerate(zip(prev, current)):
+                    if old_uid is None and new_uid is not None:
+                        game_id = _card_map.get(new_uid, 0)
+                        card_placed_callback(idx, game_id)
+                prev = current
+                time.sleep(0.2)
+        threading.Thread(target=_card_watcher, daemon=True).start()
+
     print()
     print("  Place your cards in the slots — slot 1 is step 1.")
-    print("  Press the buzzer when ready.")
+    print("  Press the green button when ready.")
     print()
 
     submitted_event.wait()

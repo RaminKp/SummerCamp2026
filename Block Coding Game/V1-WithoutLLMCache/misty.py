@@ -14,7 +14,7 @@ DEG_PER_SECOND = 15.17
 
 # ── ✏️  Voice / Audio ─────────────────────────────────────────────────────────
 VOICE        = "en-us-x-sfg-local"  # Android TTS voice installed on this robot
-PITCH        = 1.0                   # 1.0 = normal
+PITCH        = 1.2                   # >1 = higher pitch (clearer for young kids)
 SPEECH_RATE  = 0.75                  # <1 = slower/clearer for kids
 VOLUME       = 90                    # speaker volume 0-100 (set once at startup)
 
@@ -154,7 +154,7 @@ def enable_hazards():
 
 def celebrate():
     led_win()
-    speak("Congratulations! You solved the maze. Thanks for playing!")
+    speak("Congratulations, mission team! All missions complete — you are incredible!")
     _post("head", {"Pitch": -10, "Roll": 0, "Yaw": 0, "Velocity": 60})
     time.sleep(0.4)
     _post("head", {"Pitch": 10, "Roll": 0, "Yaw": 0, "Velocity": 60})
