@@ -343,7 +343,11 @@ def execute_drive_map(drive_map: list[tuple]):
             stop()
         else:
             raise ValueError(f"Unknown drive command: '{action}'")
-    stop()   # ensure Misty halts fully after the last command
+        # Hard stop + settle between every command so residual momentum from
+        # a forward does not carry into the next turn.
+        stop()
+        time.sleep(0.3)
+    stop()   # final halt
 
 
 # ── Connection test ───────────────────────────────────────────────────────────
