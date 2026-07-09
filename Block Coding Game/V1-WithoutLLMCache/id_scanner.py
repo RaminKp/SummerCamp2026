@@ -26,7 +26,8 @@ USERS_PATH          = Path(__file__).parent.parent.parent / "Documents" / "users
 ARUCO_DICT          = cv2.aruco.DICT_6X6_1000   # covers IDs up to 999
 POLL_INTERVAL       = 0.05                       # seconds between frame reads
 STABLE_FRAMES       = 8                          # frames a marker must appear before accepting
-FACE_STABLE_FRAMES  = 5                          # face frames before Misty greets
+MOTION_PIXELS       = 2000                       # foreground pixels to count as "someone arrived"
+MOTION_STABLE       = 4                          # consecutive frames above threshold before greeting
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -80,26 +81,30 @@ def _keyboard_fallback(n: int, users: dict) -> list[dict]:
     return players_found
 
 
-def _wait_for_face(cap, face_cascade) -> bool:
-    """Block until a face is detected for FACE_STABLE_FRAMES consecutive frames.
+def _wait_for_presence(cap) -> None:
+    """Block until motion is detected — someone walked up to the camera.
 
-    Returns True when a face is confirmed, False if cap fails immediately.
+    Uses background subtraction (MOG2) on a downscaled frame so it runs fast
+    on the Pi. No model needed; works in any lighting.
     """
-    face_count = 0
-    print("  Watching for a player...")
+    subtractor = cv2.createBackgroundSubtractorMOG2(history=60, varThreshold=40,
+                                                     detectShadows=False)
+    stable = 0
+    print("  Waiting for players to approach...")
     while True:
         ret, frame = cap.read()
         if not ret:
             time.sleep(POLL_INTERVAL)
             continue
-        gray  = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4)
-        if len(faces) > 0:
-            face_count += 1
-            if face_count >= FACE_STABLE_FRAMES:
-                return True
+        small  = cv2.resize(frame, (320, 240))
+        mask   = subtractor.apply(small)
+        motion = cv2.countNonZero(mask)
+        if motion > MOTION_PIXELS:
+            stable += 1
+            if stable >= MOTION_STABLE:
+                return
         else:
-            face_count = 0
+            stable = 0
         time.sleep(POLL_INTERVAL)
 
 
@@ -125,9 +130,6 @@ def wait_for_players(n: int = 2) -> list[dict]:
         print("  [id_scanner] No webcam found — falling back to keyboard entry.")
         return _keyboard_fallback(n, users)
 
-    face_cascade = cv2.CascadeClassifier(
-        cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-    )
     dictionary = cv2.aruco.getPredefinedDictionary(ARUCO_DICT)
     detector   = cv2.aruco.ArucoDetector(dictionary, cv2.aruco.DetectorParameters())
 
@@ -135,8 +137,8 @@ def wait_for_players(n: int = 2) -> list[dict]:
     ids_seen: set[int]        = set()
 
     try:
-        # ── Phase 1: wait for someone to approach (once only) ─────────────────
-        _wait_for_face(cap, face_cascade)
+        # ── Phase 1: wait for someone to approach (motion detection, once only)
+        _wait_for_presence(cap)
         misty.speak(
             "Hello there! I can see you! "
             "Both players, please get ready to show me your ID cards!"
