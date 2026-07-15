@@ -1,18 +1,23 @@
 """
-Excel game logging — two-player sessions with ArUco ID tracking.
-
-Sheets:
-  Sessions      — one row per game (both players, map, outcome, duration)
-  Attempts      — one row per RFID submission at a checkpoint
-  PlayerSummary — one row per game, rolling up accuracy and score
+Game logging — writes three formats in parallel:
+  game_log.xlsx  — Excel workbook (Sessions / Attempts / PlayerSummary sheets)
+  game_log.json  — full structured JSON, one object with three arrays
+  logs/sessions.csv       — one row per game
+  logs/attempts.csv       — one row per RFID submission
+  logs/player_summary.csv — one row per game, rolled-up accuracy
 """
 
+import csv
+import json
 from datetime import datetime
 from pathlib import Path
 
 from openpyxl import Workbook, load_workbook
 
-LOG_PATH = Path(__file__).parent / "game_log.xlsx"
+BASE_DIR  = Path(__file__).parent
+LOG_PATH  = BASE_DIR / "game_log.xlsx"
+JSON_PATH = BASE_DIR / "game_log.json"
+CSV_DIR   = BASE_DIR / "logs"
 
 SESSIONS_HEADER = [
     "SessionID",
@@ -37,6 +42,37 @@ SUMMARY_HEADER = [
     "Accuracy (%)", "Game Duration (s)",
 ]
 
+
+# ── JSON helpers ─────────────────────────────────────────────────────────────
+
+def _load_json() -> dict:
+    if JSON_PATH.exists():
+        try:
+            return json.loads(JSON_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {"sessions": [], "attempts": [], "player_summary": []}
+
+
+def _save_json(data: dict):
+    JSON_PATH.write_text(json.dumps(data, indent=2, ensure_ascii=False),
+                         encoding="utf-8")
+
+
+# ── CSV helpers ───────────────────────────────────────────────────────────────
+
+def _append_csv(filename: str, header: list, row: list):
+    CSV_DIR.mkdir(exist_ok=True)
+    path    = CSV_DIR / filename
+    is_new  = not path.exists()
+    with open(path, "a", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        if is_new:
+            writer.writerow(header)
+        writer.writerow(row)
+
+
+# ── Excel helpers ─────────────────────────────────────────────────────────────
 
 def _ensure_workbook() -> Workbook:
     if LOG_PATH.exists():
@@ -91,9 +127,7 @@ class GameLogger:
         duration = round((end_time - start).total_seconds(), 1)
         p1, p2   = self._p(0), self._p(1)
 
-        wb = _ensure_workbook()
-
-        wb["Sessions"].append([
+        session_row = [
             self.session_id,
             p1.get("name", ""),  p1.get("aruco_id", ""), p1.get("age", ""), p1.get("plays", 0),
             p2.get("name", ""),  p2.get("aruco_id", ""), p2.get("age", ""), p2.get("plays", 0),
@@ -103,13 +137,13 @@ class GameLogger:
             end_time.strftime("%H:%M:%S"),
             duration,
             outcome,
-        ])
+        ]
 
         total    = len(self._attempt_rows)
         correct  = sum(1 for a in self._attempt_rows if a["correct"])
         accuracy = round(100 * correct / total, 1) if total else 0.0
 
-        wb["PlayerSummary"].append([
+        summary_row = [
             self.session_id,
             p1.get("name", ""), p1.get("aruco_id", ""),
             p2.get("name", ""), p2.get("aruco_id", ""),
@@ -117,9 +151,23 @@ class GameLogger:
             self.map_name,
             outcome,
             total, correct, total - correct, accuracy, duration,
-        ])
+        ]
 
+        # ── Excel ──────────────────────────────────────────────────────────────
+        wb = _ensure_workbook()
+        wb["Sessions"].append(session_row)
+        wb["PlayerSummary"].append(summary_row)
         wb.save(LOG_PATH)
+
+        # ── JSON ───────────────────────────────────────────────────────────────
+        jdata = _load_json()
+        jdata["sessions"].append(dict(zip(SESSIONS_HEADER, session_row)))
+        jdata["player_summary"].append(dict(zip(SUMMARY_HEADER, summary_row)))
+        _save_json(jdata)
+
+        # ── CSV ────────────────────────────────────────────────────────────────
+        _append_csv("sessions.csv",        SESSIONS_HEADER, session_row)
+        _append_csv("player_summary.csv",  SUMMARY_HEADER,  summary_row)
 
     # ── per-checkpoint-attempt level ──────────────────────────────────────
 
@@ -136,8 +184,7 @@ class GameLogger:
         self._attempt_rows.append({"correct": correct})
 
         p1, p2 = self._p(0), self._p(1)
-        wb = _ensure_workbook()
-        wb["Attempts"].append([
+        attempt_row = [
             self.session_id,
             p1.get("name", ""), p2.get("name", ""),
             start.strftime("%Y-%m-%d"),
@@ -151,5 +198,17 @@ class GameLogger:
             start.strftime("%H:%M:%S"),
             end_time.strftime("%H:%M:%S"),
             duration,
-        ])
+        ]
+
+        # ── Excel ──────────────────────────────────────────────────────────────
+        wb = _ensure_workbook()
+        wb["Attempts"].append(attempt_row)
         wb.save(LOG_PATH)
+
+        # ── JSON ───────────────────────────────────────────────────────────────
+        jdata = _load_json()
+        jdata["attempts"].append(dict(zip(ATTEMPTS_HEADER, attempt_row)))
+        _save_json(jdata)
+
+        # ── CSV ────────────────────────────────────────────────────────────────
+        _append_csv("attempts.csv", ATTEMPTS_HEADER, attempt_row)
