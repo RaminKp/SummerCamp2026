@@ -51,8 +51,15 @@ def run_game(map_id: int, active_map, players: list[dict]):
 
     logger   = GameLogger(players=players, map_name=active_map.name)
     logger.start()
-    recorder = GameRecorder(session_id=logger.session_id)
-    recorder.start()
+
+    # Only record if every player has consent=true
+    _record = not any(p.get("no_video") for p in players)
+    if _record:
+        recorder = GameRecorder(session_id=logger.session_id)
+        recorder.start()
+    else:
+        recorder = None
+        print("  [recorder] Skipped — one or more players have consent=false.")
 
     print(f"\n{'='*50}")
     print(f"  MISTY MAZE GAME")
@@ -176,7 +183,7 @@ def run_game(map_id: int, active_map, players: list[dict]):
                 misty.led(0, 0, 0)
                 misty.enable_hazards()
                 logger.end(outcome="Aborted")
-                recorder.stop()
+                if recorder: recorder.stop()
                 id_scanner.update_play_counts(players)
                 return
 
@@ -224,7 +231,7 @@ def run_game(map_id: int, active_map, players: list[dict]):
                         misty.led(0, 0, 0)
                         misty.enable_hazards()
                         logger.end(outcome="RFIDTimeout")
-                        recorder.stop()
+                        if recorder: recorder.stop()
                         id_scanner.update_play_counts(players)
                         return
 
@@ -279,7 +286,8 @@ def run_game(map_id: int, active_map, players: list[dict]):
         print(f"{'='*50}\n")
         logger.end(outcome="Completed")
 
-    recorder.stop()
+    if recorder:
+        recorder.stop()
     misty.enable_hazards()
     id_scanner.update_play_counts(players)
 
@@ -299,7 +307,7 @@ def run_forever():
     misty.turn_180()
     misty.head(pitch=-40)
     misty.speak("Hello! I am Misty and I am so excited for today's missions!")
-    misty.speak("Step up and show me your ID card so I know who I am playing with!")
+    misty.speak("When you are ready to play, press the green button to get started!")
 
     while True:
         players = id_scanner.wait_for_players(n=2)

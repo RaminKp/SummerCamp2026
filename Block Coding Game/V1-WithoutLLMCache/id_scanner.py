@@ -14,6 +14,7 @@ Usage:
 """
 
 import json
+import sys
 import time
 from pathlib import Path
 
@@ -22,12 +23,12 @@ import misty
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-USERS_PATH          = Path(__file__).parent.parent.parent / "Documents" / "users.json"
-ARUCO_DICT          = cv2.aruco.DICT_6X6_1000   # covers IDs up to 999
-POLL_INTERVAL       = 0.05                       # seconds between frame reads
-STABLE_FRAMES       = 8                          # frames a marker must appear before accepting
-MOTION_PIXELS       = 2000                       # foreground pixels to count as "someone arrived"
-MOTION_STABLE       = 4                          # consecutive frames above threshold before greeting
+USERS_PATH      = Path(__file__).parent.parent.parent / "Documents" / "users.json"
+ARUCO_DICT      = cv2.aruco.DICT_6X6_1000   # covers IDs up to 999
+POLL_INTERVAL   = 0.05                       # seconds between frame reads
+STABLE_FRAMES   = 8                          # frames a marker must appear before accepting
+MOTION_PIXELS   = 2000                       # foreground pixels to count as "someone arrived"
+MOTION_STABLE   = 4                          # consecutive motion frames before prompting
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -44,15 +45,52 @@ def _player_from_id(aruco_id: int, users: dict) -> dict | None:
     data = users.get(str(aruco_id))
     if data is None:
         return None
-    if not data.get("consent", False):
-        print(f"  [id_scanner] ID {aruco_id} has consent=false — skipping.")
-        return None
+    # consent=false only blocks video recording, not playing
     return {
         "aruco_id": aruco_id,
         "name":     data.get("name") or f"Player {aruco_id}",
         "age":      data.get("age", ""),
         "plays":    data.get("plays", 0),
+        "no_video": not data.get("consent", False),
     }
+
+
+def _wait_for_presence(cap) -> None:
+    """Block until motion is detected — someone walked up to the camera."""
+    subtractor = cv2.createBackgroundSubtractorMOG2(history=60, varThreshold=40,
+                                                     detectShadows=False)
+    stable = 0
+    print("  Watching for players to approach...")
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            time.sleep(POLL_INTERVAL)
+            continue
+        small  = cv2.resize(frame, (320, 240))
+        mask   = subtractor.apply(small)
+        motion = cv2.countNonZero(mask)
+        if motion > MOTION_PIXELS:
+            stable += 1
+            if stable >= MOTION_STABLE:
+                return
+        else:
+            stable = 0
+        time.sleep(POLL_INTERVAL)
+
+
+def _wait_for_button():
+    """Block until the green button (space/enter) is pressed."""
+    import tty, termios
+    fd  = sys.stdin.fileno()
+    old = termios.tcgetattr(fd)
+    try:
+        tty.setraw(fd)
+        while True:
+            ch = sys.stdin.read(1)
+            if ch in (' ', '\r', '\n'):
+                return
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old)
 
 
 def _keyboard_fallback(n: int, users: dict) -> list[dict]:
@@ -111,13 +149,12 @@ def _wait_for_presence(cap) -> None:
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def wait_for_players(n: int = 2) -> list[dict]:
-    """Scan ArUco ID cards via USB webcam until n valid players are detected.
+    """Wait for a green-button press, then scan n players' ArUco ID cards.
 
-    Phase 1 — face detection: wait once for someone to approach, then greet.
-    Phase 2 — ArUco scan: scan each player's ID card one at a time with a
-    direct prompt per slot. No second face-detection round — avoids the race
-    where player 1's face triggers another greeting before player 2 scans.
+    Button press starts the flow and triggers video recording in main.py.
+    consent=false players can play — they are just not recorded.
     Falls back to keyboard entry if no webcam is available.
+    Returns list of player dicts, each with a 'no_video' bool.
     """
     users = _load_users()
 
@@ -128,7 +165,20 @@ def wait_for_players(n: int = 2) -> list[dict]:
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
         print("  [id_scanner] No webcam found — falling back to keyboard entry.")
+        # No webcam: skip presence detection, go straight to button + keyboard
+        misty.speak("Press the green button when you are ready to play!")
+        _wait_for_button()
         return _keyboard_fallback(n, users)
+
+    # ── Phase 1: motion detection — wait until someone approaches ────────────
+    _wait_for_presence(cap)
+    print("  Someone detected — prompting for button press.")
+    misty.speak("Hello there! Press the green button when you are ready to play!")
+
+    # ── Phase 2: wait for green button press ──────────────────────────────────
+    _wait_for_button()
+    print("  Button pressed — starting ID scan.")
+    misty.speak("Great! Both players, please show me your ID cards!")
 
     dictionary = cv2.aruco.getPredefinedDictionary(ARUCO_DICT)
     detector   = cv2.aruco.ArucoDetector(dictionary, cv2.aruco.DetectorParameters())
@@ -137,14 +187,6 @@ def wait_for_players(n: int = 2) -> list[dict]:
     ids_seen: set[int]        = set()
 
     try:
-        # ── Phase 1: wait for someone to approach (motion detection, once only)
-        _wait_for_presence(cap)
-        misty.speak(
-            "Hello there! I can see you! "
-            "Both players, please get ready to show me your ID cards!"
-        )
-
-        # ── Phase 2: scan each player's ID card in turn ───────────────────────
         while len(players_found) < n:
             slot = len(players_found) + 1
             print(f"  Hold Player {slot}'s ID card up to the webcam...")
@@ -181,23 +223,22 @@ def wait_for_players(n: int = 2) -> list[dict]:
                                 misty.speak("Hmm, I don't recognise that card. Try another!")
                                 last_id      = None
                                 stable_count = 0
-                                # stay in inner loop — wait for a valid card
                                 continue
                             ids_seen.add(aruco_id)
                             players_found.append(player)
                             name = player["name"]
-                            print(f"  ✓ Player {slot}: {name} (ID {aruco_id})\n")
+                            print(f"  ✓ Player {slot}: {name} (ID {aruco_id})"
+                                  f"  [no_video={player['no_video']}]\n")
                             misty.speak(
                                 f"Welcome, {name}! "
                                 "I am so happy to have you on the mission team!"
                             )
-                            time.sleep(1.0)   # brief pause before next slot
-                            break             # accepted — exit for loop
+                            time.sleep(1.0)
+                            break
                     else:
-                        # for loop completed without break (no new valid marker)
                         time.sleep(POLL_INTERVAL)
-                        continue             # keep scanning
-                    break                   # for loop broke — card accepted, exit while
+                        continue
+                    break
                 else:
                     last_id      = None
                     stable_count = 0
