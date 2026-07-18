@@ -253,8 +253,9 @@ def run_game(map_id: int, active_map, players: list[dict]):
                     break
 
                 if checkpoint.return_map:
-                    # ── Happy journey home ────────────────────────────────
-                    misty.speak("Woohoooo! Now I am heading back home — home sweet home, here I come!")
+                    # ── Happy journey home (map 2 goes home only at the end) ──
+                    if map_id != 2:
+                        misty.speak("Woohoooo! Now I am heading back home — home sweet home, here I come!")
                     print(f"   Returning...")
                     _drive(checkpoint.return_map)
                     last_completed_cp = checkpoint
@@ -264,9 +265,12 @@ def run_game(map_id: int, active_map, players: list[dict]):
                         outcome = "TimeUp"
                         break
 
-                    # ── Back at home ──────────────────────────────────────
+                    # ── Back at home (map 2 stays out in the maze) ────────
                     misty.wave()
-                    misty.speak("YESSSSS! I am back at base! You are an INCREDIBLE mission team!")
+                    if map_id != 2:
+                        misty.speak("YESSSSS! I am back at base! You are an INCREDIBLE mission team!")
+                    else:
+                        misty.speak("YESSSSS! What an incredible mission team you are!")
 
                     # ── Remove cards ──────────────────────────────────────
                     removal = wait_for_tags_removed(speak_fn=misty.speak)
@@ -280,16 +284,17 @@ def run_game(map_id: int, active_map, players: list[dict]):
                         id_scanner.update_play_counts(players)
                         return
 
-                    # ── Place Misty in red box + buzzer ───────────────────
-                    misty.speak(
-                        "Now please place me in the red box and press the buzzer "
-                        "when I am in position!"
-                    )
-                    wait_for_button(game_over_event=game_over_event)
+                    # ── Place Misty in red box + buzzer (6–8 map only) ────
+                    if map_id != 2:
+                        misty.speak(
+                            "Now please place me in the red box and press the buzzer "
+                            "when I am in position!"
+                        )
+                        wait_for_button(game_over_event=game_over_event)
 
-                    if game_over_event.is_set():
-                        outcome = "TimeUp"
-                        break
+                        if game_over_event.is_set():
+                            outcome = "TimeUp"
+                            break
 
                 if game_over_event.is_set():
                     outcome = "TimeUp"

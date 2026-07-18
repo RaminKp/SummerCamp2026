@@ -39,8 +39,10 @@ _arm_session   = requests.Session()   # wave / bye_gesture only
 
 _ws_app      = None
 _ws_moving   = False
+_ws_connected = False
 _stopped_event = threading.Event()
 _stopped_event.set()   # start as "already stopped"
+_move_seen   = threading.Event()   # set when the WS reports actual motion
 
 WS_STOP_TIMEOUT = 5.0  # fallback seconds after commanded duration
 
@@ -53,6 +55,7 @@ def _on_ws_message(ws, message):
         ang = abs(float(msg.get("angularVelocity", 0)))
         if lin > 0.5 or ang > 0.5:
             _ws_moving = True
+            _move_seen.set()
             _stopped_event.clear()
         elif _ws_moving:
             _ws_moving = False
@@ -86,12 +89,22 @@ def connect_ws():
         }))
         print("  [WS] Subscribed to LocomotionCommand.")
 
+    def _on_open_full(ws):
+        global _ws_connected
+        _ws_connected = True
+        _on_open(ws)
+
+    def _on_close(ws, c, m):
+        global _ws_connected
+        _ws_connected = False
+        print("  [WS] Disconnected.")
+
     _ws_app = _websocket.WebSocketApp(
         url,
-        on_open    = _on_open,
+        on_open    = _on_open_full,
         on_message = _on_ws_message,
         on_error   = lambda ws, e: print(f"  [WS] Error: {e}"),
-        on_close   = lambda ws, c, m: print("  [WS] Disconnected."),
+        on_close   = _on_close,
     )
     threading.Thread(
         target=lambda: _ws_app.run_forever(reconnect=5),
@@ -148,44 +161,55 @@ def _deg_to_ms(degrees: float) -> int:
 
 # ── Drive commands ────────────────────────────────────────────────────────────
 
+def _drive_time(linear: float, angular: float, ms: int):
+    """Send one drive/time command and wait it out.
+
+    Verified against the WebSocket: if the command was accepted but the event
+    stream saw no actual motion during its window (command accepted, wheels
+    never turned), re-send it ONCE. Only trusted while the WS is connected.
+    """
+    payload = {"linearVelocity": linear, "angularVelocity": angular, "timeMs": ms}
+    _stopped_event.clear()
+    _move_seen.clear()
+    _post("drive/time", payload, session=_drive_session)
+    _wait_stopped(ms)
+
+    if _ws_connected and not _move_seen.is_set():
+        print("    [drive] command accepted but NO motion seen — re-sending once")
+        _stopped_event.clear()
+        _move_seen.clear()
+        _post("drive/time", payload, session=_drive_session)
+        _wait_stopped(ms)
+
+
 def forward(cm: float):
     ms = _cm_to_ms(cm)
     print(f"    → forward {cm}cm ({ms}ms)")
-    _stopped_event.clear()
-    _post("drive/time", {"linearVelocity": DRIVE_SPEED, "angularVelocity": 0, "timeMs": ms}, session=_drive_session)
-    _wait_stopped(ms)
+    _drive_time(DRIVE_SPEED, 0, ms)
 
 
 def back(cm: float):
     ms = _cm_to_ms(cm)
     print(f"    → back {cm}cm ({ms}ms)")
-    _stopped_event.clear()
-    _post("drive/time", {"linearVelocity": -DRIVE_SPEED, "angularVelocity": 0, "timeMs": ms}, session=_drive_session)
-    _wait_stopped(ms)
+    _drive_time(-DRIVE_SPEED, 0, ms)
 
 
 def turn_left(degrees: float):
     ms = _deg_to_ms(degrees)
     print(f"    → turn left {degrees}° ({ms}ms)")
-    _stopped_event.clear()
-    _post("drive/time", {"linearVelocity": 0, "angularVelocity": TURN_SPEED, "timeMs": ms}, session=_drive_session)
-    _wait_stopped(ms)
+    _drive_time(0, TURN_SPEED, ms)
 
 
 def turn_right(degrees: float):
     ms = _deg_to_ms(degrees)
     print(f"    → turn right {degrees}° ({ms}ms)")
-    _stopped_event.clear()
-    _post("drive/time", {"linearVelocity": 0, "angularVelocity": -TURN_SPEED, "timeMs": ms}, session=_drive_session)
-    _wait_stopped(ms)
+    _drive_time(0, -TURN_SPEED, ms)
 
 
 def turn_180():
     ms = _deg_to_ms(180)
     print(f"    → turn 180° ({ms}ms)")
-    _stopped_event.clear()
-    _post("drive/time", {"linearVelocity": 0, "angularVelocity": TURN_SPEED, "timeMs": ms}, session=_drive_session)
-    _wait_stopped(ms)
+    _drive_time(0, TURN_SPEED, ms)
 
 
 def head(pitch: float = 0, roll: float = 0, yaw: float = 0, velocity: float = 60):
