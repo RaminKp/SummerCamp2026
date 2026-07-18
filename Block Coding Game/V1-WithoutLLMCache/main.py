@@ -1,10 +1,13 @@
 import threading
 import time
+from datetime import datetime
+from urllib.parse import quote
+
+import requests
 
 import misty
 import narrator
 import id_scanner
-from recorder     import GameRecorder
 from maps         import MAPS, select_checkpoints, Checkpoint
 from detector     import (run_detector, wait_for_tags_removed, wait_for_button,
                           pause_rfid_polling, resume_rfid_polling)
@@ -22,6 +25,34 @@ def _drive(drive_map: list):
         misty.execute_drive_map(drive_map)
     finally:
         resume_rfid_polling()
+
+
+# ── Continuous recording (webcam is on the PC, not the Pi) ────────────────────
+# pc_recorder.py runs on the PC and holds the webcam. The Pi just tells it
+# when to cut segments. Find the PC's IP with `ipconfig` while it is
+# connected to the Pi's hotspot, and set it here.
+
+PC_RECORDER_URL = "http://10.42.0.43:8765"   # ← PC's hotspot IP (ipconfig on the PC)
+
+
+def _recorder_cmd(path: str):
+    try:
+        requests.get(f"{PC_RECORDER_URL}/{path}", timeout=2)
+    except Exception as e:
+        print(f"  [recorder] PC recorder unreachable ({e}) — game continues unrecorded.")
+
+
+def _start_recording(session_id: str):
+    """Close the current segment on the PC and immediately start a new one."""
+    _recorder_cmd(f"start?session_id={quote(session_id)}")
+
+
+def _stop_recording():
+    _recorder_cmd("stop")
+
+
+def _restart_idle_recording():
+    _start_recording(f"idle_{datetime.now().strftime('%Y%m%dT%H%M%S')}")
 
 
 def select_map():
@@ -59,14 +90,13 @@ def run_game(map_id: int, active_map, players: list[dict]):
     logger   = GameLogger(players=players, map_name=active_map.name)
     logger.start()
 
-    # Only record if every player has consent=true
-    _record = not any(p.get("no_video") for p in players)
-    if _record:
-        recorder = GameRecorder(session_id=logger.session_id)
-        recorder.start()
+    # Cut from the idle segment to a per-game segment — unless a player
+    # has consent=false, in which case recording pauses for this game.
+    if not any(p.get("no_video") for p in players):
+        _start_recording(logger.session_id)
     else:
-        recorder = None
-        print("  [recorder] Skipped — one or more players have consent=false.")
+        _stop_recording()
+        print("  [recorder] Game not recorded — one or more players have consent=false.")
 
     print(f"\n{'='*50}")
     print(f"  MISTY MAZE GAME")
@@ -188,7 +218,7 @@ def run_game(map_id: int, active_map, players: list[dict]):
                 misty.led(0, 0, 0)
                 misty.enable_hazards()
                 logger.end(outcome="Aborted")
-                if recorder: recorder.stop()
+                _restart_idle_recording()
                 id_scanner.update_play_counts(players)
                 return
 
@@ -246,7 +276,7 @@ def run_game(map_id: int, active_map, players: list[dict]):
                         misty.led(0, 0, 0)
                         misty.enable_hazards()
                         logger.end(outcome="RFIDTimeout")
-                        if recorder: recorder.stop()
+                        _restart_idle_recording()
                         id_scanner.update_play_counts(players)
                         return
 
@@ -260,8 +290,6 @@ def run_game(map_id: int, active_map, players: list[dict]):
                     if game_over_event.is_set():
                         outcome = "TimeUp"
                         break
-
-                    misty.turn_180()  # face the maze
 
                 if game_over_event.is_set():
                     outcome = "TimeUp"
@@ -300,7 +328,7 @@ def run_game(map_id: int, active_map, players: list[dict]):
             _return_misty_home(last_completed_cp, map_id, drove_out=False)
         misty.led_error()
         misty.turn_180()
-        misty.head(pitch=-40, yaw=-45)
+        misty.head(pitch=-40, yaw=-60)
         misty.speak(f"Time is up! You were an AMAZING mission team, {p1} and {p2}!")
         misty.speak("See you next time — byeee!")
         misty.bye_gesture()
@@ -313,8 +341,7 @@ def run_game(map_id: int, active_map, players: list[dict]):
         print(f"{'='*50}\n")
         logger.end(outcome="Completed")
 
-    if recorder:
-        recorder.stop()
+    _restart_idle_recording()
     misty.enable_hazards()
     id_scanner.update_play_counts(players)
 
@@ -329,8 +356,11 @@ def run_forever():
 
     map_id, active_map = select_map()
 
+    # Recording runs from program start; each game cuts its own segment.
+    _restart_idle_recording()
+
     misty.turn_180()
-    misty.head(pitch=-40, yaw=-45)
+    misty.head(pitch=-40, yaw=-60)
     misty.speak("Hello! I am Misty and I am SO excited for today's missions!")
     misty.speak("When you are ready to play, press the green button to get started!")
 
@@ -343,12 +373,13 @@ def run_forever():
             print(f"\n[ERROR] Game crashed: {e}")
             misty.led_error()
             misty.speak("Oops, something went wrong. Please ask a grown-up for help.")
+            _restart_idle_recording()   # game segment may still be open — cut back to idle
 
         print("\n  Game over. Ready for the next players!")
         misty.led_ready()
         # run_game leaves Misty facing the maze; turn to face kids for next check-in
         misty.turn_180()
-        misty.head(pitch=-40, yaw=-45)
+        misty.head(pitch=-40, yaw=-60)
         misty.speak("That was AMAZING! Who is ready to play next?")
         misty.speak("Step up and show me your ID card!")
         time.sleep(3)

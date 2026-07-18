@@ -279,16 +279,16 @@ def bye_gesture():
 def celebrate():
     """Turn to face kids, wave, then celebrate with speech and a head nod."""
     turn_180()
-    head(pitch=-40, yaw=-45)
+    head(pitch=-40, yaw=-60)
     led_win()
     wave()
     speak("YESSSSS! All missions complete — you are an INCREDIBLE mission team!")
     # Head nod
-    _post("head", {"pitch": -10, "roll": 0, "yaw": -45, "velocity": 60})
+    _post("head", {"pitch": -10, "roll": 0, "yaw": -60, "velocity": 60})
     time.sleep(0.4)
-    _post("head", {"pitch": 10,  "roll": 0, "yaw": -45, "velocity": 60})
+    _post("head", {"pitch": 10,  "roll": 0, "yaw": -60, "velocity": 60})
     time.sleep(0.4)
-    _post("head", {"pitch": -40, "roll": 0, "yaw": -45, "velocity": 60})
+    _post("head", {"pitch": -40, "roll": 0, "yaw": -60, "velocity": 60})
     time.sleep(0.4)
     bye_gesture()
 

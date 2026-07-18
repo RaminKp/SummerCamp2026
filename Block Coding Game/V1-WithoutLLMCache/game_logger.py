@@ -157,6 +157,7 @@ class GameLogger:
             "total_duration_seconds": duration,
             "checkpoints":           self._checkpoints,
             "outcome":               outcome,
+            "correct_attempts":      correct,
             "total_score":           float(correct),
         }
         sessions = _load_json()
