@@ -18,11 +18,11 @@ BASE_URL  = f"http://{MISTY_IP}/api"
 # ── ✏️  Calibration ────────────────────────────────────────────────────────────
 DRIVE_SPEED    = 35.0
 TURN_SPEED     = 20.0
-CM_PER_SECOND  = 28.9
+CM_PER_SECOND  = 24.3
 DEG_PER_SECOND = 15.17
 
 # ── ✏️  Voice / Audio ─────────────────────────────────────────────────────────
-VOICE        = "en-us-x-sfg-local"  # Android TTS voice installed on this robot
+VOICE        = "en-gb-x-gbc-local"  # Android TTS voice installed on this robot
 PITCH        = 1.3                   # >1 = higher pitch (clearer for young kids)
 SPEECH_RATE  = 0.9                   # slightly faster for energy; still clear
 VOLUME       = 65                    # speaker volume 0-100 (set once at startup)
