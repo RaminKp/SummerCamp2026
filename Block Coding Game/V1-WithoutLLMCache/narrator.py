@@ -43,24 +43,26 @@ _SYSTEM = (
 _LIVE_PROMPTS = {
     "hint": (
         "Mission {phase} of {total}. Destination is the {location}. Moves needed: {moves}. "
-        "Give ONE clue that mentions '{location}' by name — under 12 words."
+        "Give ONE excited clue that mentions '{location}' by name — under 12 words. "
+        "Be energetic and fun for kids."
     ),
     "success": (
         "Children solved mission {phase} — Misty is heading to the {location} now. "
-        "Say '{location}' in your excited sentence — under 10 words."
+        "React with HIGH excitement. Say '{location}' in your thrilled sentence — under 10 words. "
+        "Use words like YESSS, WOOHOO, AMAZING."
     ),
     "wrong_order": (
         "Right cards but wrong order, mission {phase} going to {location}. Moves are: {moves}. "
-        "Mention '{location}' and hint which move comes first — under 12 words."
+        "Encourage kids warmly, mention '{location}', hint which move comes first — under 12 words."
     ),
     "wrong_ids": (
         "Wrong cards chosen, mission {phase} going to {location}. Correct moves are: {moves}. "
-        "Mention '{location}' and hint which card types are needed — under 12 words."
+        "Encourage kids warmly, mention '{location}', hint card types needed — under 12 words."
     ),
     "returning": (
-        "Just arrived at {location}, mission {phase}! Be VERY excited. "
-        "Say '{location}' loudly — one thrilled sentence under 10 words, "
-        "like 'Yesssss! I am at the {location}! We completed the mission!'"
+        "Misty just arrived at {location} on mission {phase}! React with MAXIMUM excitement. "
+        "Say '{location}' — one thrilled sentence under 10 words, "
+        "like 'YESSSSS! I am at the {location}! WE DID IT!'"
     ),
 }
 
@@ -69,27 +71,28 @@ _LIVE_PROMPTS = {
 def _fallback(key: str, phase: int, location: str, total: int = 3,
               sequence: list | None = None) -> str:
     is_last = (phase == total)
-    _move_names = {1: "Forward", 2: "Turn Left", 3: "Turn Right"}
-    first_move = _move_names.get((sequence or [0])[0], "Forward") if sequence else "Forward"
+    _move_names = {1: "Straight", 2: "Turn Left", 3: "Turn Right"}
+    first_move = _move_names.get((sequence or [0])[0], "Straight") if sequence else "Straight"
     return {
         "hint": (
-            f"Mission {phase}! I need to reach the {location} — "
-            f"think carefully about which cards to use!"
+            f"Ooooh, Mission {phase}! We need to reach the {location} — "
+            f"think carefully and choose the best cards!"
         ),
         "success": (
-            f"Amazing! On my way to the {location} right now — great teamwork!"
+            f"YESSS! I am zooming to the {location} right now — AMAZING teamwork!"
         ),
         "wrong_order": (
-            f"You have the right cards! Try starting with {first_move} in slot one!"
+            f"Ooooh, so close! You have the right cards! "
+            f"Try starting with {first_move} in slot one!"
         ),
         "wrong_ids": (
-            f"Those cards won't reach the {location}. "
-            f"Think about how many Forwards and turns you need!"
+            f"Hmm, those cards won't get me to the {location}! "
+            f"Think about how many Straights and turns you need!"
         ),
         "returning": (
-            "Yesssss! I am back home! We completed the mission, team!"
+            "YESSSSS! I AM BACK HOME! WE DID IT, MISSION TEAM — INCREDIBLE!"
             if is_last
-            else f"Yesssss! I am at the {location}! We completed the mission!"
+            else f"YESSSSS! I am at the {location}! We completed the mission — WOOHOO!"
         ),
     }[key]
 
@@ -98,7 +101,7 @@ _INTRO_FALLBACK = {
     "welcome": "Hello friends! Welcome to Mission Maze!",
     "how_to_play": (
         "You have six card slots in front of you. "
-        "The Forward card moves me ahead one step. "
+        "The Straight card moves me ahead one step. "
         "The Left card turns me to my left. "
         "The Right card turns me to my right. "
         "Place your cards in order from slot one to six to build a path, "
@@ -117,7 +120,7 @@ _cache_lock  = threading.Lock()
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _sequence_to_moves(sequence: list) -> str:
-    names = {1: "Forward", 2: "Turn Left", 3: "Turn Right"}
+    names = {1: "Straight", 2: "Turn Left", 3: "Turn Right"}
     return ", ".join(names.get(c, f"move {c}") for c in sequence)
 
 

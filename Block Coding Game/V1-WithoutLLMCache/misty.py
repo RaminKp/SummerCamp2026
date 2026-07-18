@@ -18,14 +18,14 @@ BASE_URL  = f"http://{MISTY_IP}/api"
 # ── ✏️  Calibration ────────────────────────────────────────────────────────────
 DRIVE_SPEED    = 35.0
 TURN_SPEED     = 20.0
-CM_PER_SECOND  = 23.3
+CM_PER_SECOND  = 28.9
 DEG_PER_SECOND = 15.17
 
 # ── ✏️  Voice / Audio ─────────────────────────────────────────────────────────
 VOICE        = "en-us-x-sfg-local"  # Android TTS voice installed on this robot
-PITCH        = 1.2                   # >1 = higher pitch (clearer for young kids)
-SPEECH_RATE  = 0.75                  # <1 = slower/clearer for kids
-VOLUME       = 90                    # speaker volume 0-100 (set once at startup)
+PITCH        = 1.3                   # >1 = higher pitch (clearer for young kids)
+SPEECH_RATE  = 0.9                   # slightly faster for energy; still clear
+VOLUME       = 65                    # speaker volume 0-100 (set once at startup)
 
 # Reuse one TCP connection for every request instead of a new handshake per
 # command — on a flaky/congested hotspot link the handshake itself is a
@@ -243,18 +243,36 @@ def enable_hazards():
 
 # ── Expressive ────────────────────────────────────────────────────────────────
 
+def wave():
+    """Wave right arm — used at checkpoint arrivals."""
+    for pos in [-29, 60, -29, 60, -29, 90]:
+        _post("arms", {"Arm": "right", "Position": pos, "Velocity": 85})
+        time.sleep(0.35)
+
+
+def bye_gesture():
+    """Wave both arms for goodbye."""
+    for pos in [-29, 60, -29, 60, -29, 90]:
+        _post("arms", {"Arm": "left",  "Position": pos, "Velocity": 85})
+        _post("arms", {"Arm": "right", "Position": pos, "Velocity": 85})
+        time.sleep(0.35)
+
+
 def celebrate():
-    """Turn to face kids, then celebrate with speech and a head nod."""
+    """Turn to face kids, wave, then celebrate with speech and a head nod."""
     turn_180()
-    head(pitch=-40)
+    head(pitch=-40, yaw=-45)
     led_win()
-    speak("Congratulations, mission team! All missions complete — you are incredible!")
+    wave()
+    speak("YESSSSS! All missions complete — you are an INCREDIBLE mission team!")
     # Head nod
-    _post("head", {"Pitch": -10, "Roll": 0, "Yaw": 0, "Velocity": 60})
+    _post("head", {"Pitch": -10, "Roll": 0, "Yaw": -45, "Velocity": 60})
     time.sleep(0.4)
-    _post("head", {"Pitch": 10, "Roll": 0, "Yaw": 0, "Velocity": 60})
+    _post("head", {"Pitch": 10,  "Roll": 0, "Yaw": -45, "Velocity": 60})
     time.sleep(0.4)
-    _post("head", {"Pitch": 0, "Roll": 0, "Yaw": 0, "Velocity": 60})
+    _post("head", {"Pitch": -40, "Roll": 0, "Yaw": -45, "Velocity": 60})
+    time.sleep(0.4)
+    bye_gesture()
 
 
 def recalibrate_at_home(marker_id: int = 0, nudge_deg: float = 8.0):

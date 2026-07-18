@@ -6,7 +6,7 @@ import narrator
 import id_scanner
 from recorder     import GameRecorder
 from maps         import MAPS, select_checkpoints, Checkpoint
-from detector     import run_detector, wait_for_tags_removed
+from detector     import run_detector, wait_for_tags_removed, wait_for_button
 from validator    import validate_and_message, ValidationResult
 from game_logger  import GameLogger
 
@@ -31,11 +31,7 @@ def select_map():
 
 
 def _return_misty_home(cp: Checkpoint, map_id: int, drove_out: bool = False):
-    """Bring Misty back to Home(0,0) after a timer expiry.
-
-    drove_out: True when drive_map ran but return_map hasn't yet — execute
-               return_map first, then home_on_timeout (Map 2 only).
-    """
+    """Bring Misty back to Home(0,0) after a timer expiry."""
     if drove_out and cp.return_map:
         misty.execute_drive_map(cp.return_map)
     if map_id == 2 and cp.home_on_timeout:
@@ -89,31 +85,29 @@ def run_game(map_id: int, active_map, players: list[dict]):
     # ── Intro narration ───────────────────────────────────────────────────────
     print("\nLoading intro narration...")
 
-    # Pre-generate ALL checkpoint narration in the background while Misty
-    # speaks the intro, so every message is cache-ready before Round 1.
     narrator.prefetch_all(checkpoints)
 
     misty.led_ready()
-    misty.speak(f"Welcome {p1} and {p2}! I am so excited to play with you today!")
+    misty.speak(f"Welcome {p1} and {p2}! I am SO excited to play with you today — let's gooo!")
     misty.speak(f"We are playing Misty Maze today — {total} missions ahead!")
 
-    # Misty is already facing the children from startup — no turn needed here
     misty.speak(
         f"{p1} and {p2}, today we are going on {total} special missions to reach "
-        "different destinations. I need your help to find the right path. "
+        "different destinations. I need your help to find the right path! "
         "Once each mission starts, use the cards to guide me step by step across the map. "
-        "Forward means I move one cell ahead. Left and Right cards turn me in that direction. "
+        "The Straight card moves me one cell ahead. Left and Right cards turn me in that direction. "
         "Please do not touch the black walls — they are part of the maze! "
         "Let's work together, choose the best route, and help me reach each destination. "
-        "Ready, mission team? Let's go!"
+        "Ready, mission team? Let's gooooo!"
     )
 
-    misty.head(pitch=0)     # return head to neutral
-    misty.turn_180()        # face the maze
+    misty.head(pitch=0, yaw=0)   # neutral before turning to maze
+    misty.speak("Let me take my position in the maze!")
+    misty.turn_180()              # face the maze
 
     # ── Game loop ─────────────────────────────────────────────────────────────
     outcome              = "Completed"
-    last_completed_cp: Checkpoint | None = None   # Map 2: last fully-returned cp
+    last_completed_cp: Checkpoint | None = None
 
     for i, checkpoint in enumerate(checkpoints, 1):
         is_last = (i == total)
@@ -130,8 +124,8 @@ def run_game(map_id: int, active_map, players: list[dict]):
         misty.speak(narrator.live(i, total, checkpoint.location, checkpoint.sequence, "hint"))
         misty.speak("Place your cards in the slots and press the green button when you are ready!")
 
-        # Live per-card feedback: if a placed card is wrong for that slot, say so
-        _move_names = {1: "Forward", 2: "Turn Left", 3: "Turn Right"}
+        # Live per-card feedback
+        _move_names = {1: "Straight", 2: "Turn Left", 3: "Turn Right"}
         _alerted_slots: set[int] = set()
 
         def _on_card_placed(slot_idx: int, game_id: int,
@@ -158,7 +152,7 @@ def run_game(map_id: int, active_map, players: list[dict]):
             print(f"\n   [Attempt {attempts + 1}] Waiting for cards — press green button to submit...")
             logger.begin_checkpoint_attempt()
 
-            _location = checkpoint.location   # capture for lambda
+            _location = checkpoint.location
             scanned = run_detector(
                 first_tag_event=first_tag_event,
                 game_over_event=game_over_event,
@@ -207,14 +201,19 @@ def run_game(map_id: int, active_map, players: list[dict]):
                 print(f"\n   Driving out...")
                 misty.execute_drive_map(checkpoint.drive_map)
 
+                # ── Arrived at checkpoint ─────────────────────────────────
+                misty.wave()
+                misty.speak(narrator.live(i, total, checkpoint.location,
+                                          checkpoint.sequence, "returning"))
+
                 if game_over_event.is_set():
                     _return_misty_home(checkpoint, map_id, drove_out=True)
                     outcome = "TimeUp"
                     break
 
                 if checkpoint.return_map:
-                    misty.speak(narrator.live(i, total, checkpoint.location,
-                                              checkpoint.sequence, "returning"))
+                    # ── Happy journey home ────────────────────────────────
+                    misty.speak("Woohoooo! Now I am heading back home — home sweet home, here I come!")
                     print(f"   Returning...")
                     misty.execute_drive_map(checkpoint.return_map)
                     last_completed_cp = checkpoint
@@ -224,6 +223,13 @@ def run_game(map_id: int, active_map, players: list[dict]):
                         outcome = "TimeUp"
                         break
 
+                    # ── Back at home — face kids ──────────────────────────
+                    misty.wave()
+                    misty.turn_180()
+                    misty.head(pitch=-40, yaw=-45)
+                    misty.speak("YESSSSS! I am back at base! You are an INCREDIBLE mission team!")
+
+                    # ── Remove cards first ────────────────────────────────
                     removal = wait_for_tags_removed(speak_fn=misty.speak)
                     if removal == "powerdown":
                         print("\n  [RFID] Tags not removed — ending session.")
@@ -235,16 +241,31 @@ def run_game(map_id: int, active_map, players: list[dict]):
                         id_scanner.update_play_counts(players)
                         return
 
+                    # ── Place Misty in red box + buzzer ───────────────────
+                    misty.speak(
+                        "Now please place me in the red box and press the buzzer "
+                        "when I am in position!"
+                    )
+                    wait_for_button(game_over_event=game_over_event)
+
+                    if game_over_event.is_set():
+                        outcome = "TimeUp"
+                        break
+
+                    misty.speak("Let me take my position in the maze!")
+                    misty.turn_180()
+                    misty.head(pitch=0, yaw=0)
+
                 if game_over_event.is_set():
                     outcome = "TimeUp"
                     break
 
                 if is_last:
                     print("\n   Final mission complete!")
-                    game_over_event.set()   # stop the 8-min timer
+                    game_over_event.set()
                     misty.celebrate()
                 else:
-                    misty.speak(f"Great work! Get ready for Mission {i + 1}!")
+                    misty.speak(f"Woohoo! Great work, team! Get ready for Mission {i + 1} — let's keep going!")
                 break
 
             elif result == ValidationResult.WRONG_ORDER:
@@ -268,16 +289,15 @@ def run_game(map_id: int, active_map, players: list[dict]):
         print(f"\n{'='*50}")
         print("  TIME'S UP — GAME OVER")
         print(f"{'='*50}\n")
-        # Map 2: if timer fired while Misty was waiting for RFID input (not
-        # mid-drive), she is at last_completed_cp's resting position — drive home.
         if map_id == 2 and last_completed_cp is not None:
             _return_misty_home(last_completed_cp, map_id, drove_out=False)
         misty.led_error()
-        # Turn to face kids before speaking
         misty.turn_180()
-        misty.head(pitch=-40)
-        misty.speak(f"Time is up! You were an amazing mission team, {p1} and {p2}. See you next time!")
-        misty.head(pitch=0)
+        misty.head(pitch=-40, yaw=-45)
+        misty.speak(f"Time is up! You were an AMAZING mission team, {p1} and {p2}!")
+        misty.speak("See you next time — byeee!")
+        misty.bye_gesture()
+        misty.head(pitch=0, yaw=0)
         misty.led(0, 0, 0)
         logger.end(outcome="TimeUp")
     else:
@@ -291,6 +311,10 @@ def run_game(map_id: int, active_map, players: list[dict]):
     misty.enable_hazards()
     id_scanner.update_play_counts(players)
 
+    # Final reset turn so run_forever always starts the between-game flow
+    # with Misty in a known maze-facing orientation.
+    misty.turn_180()
+
 
 def run_forever():
     """Main loop: scan IDs → play game → repeat."""
@@ -298,15 +322,13 @@ def run_forever():
     print("  MISTY MAZE — STARTING UP")
     print("="*50)
 
-    # Connect WebSocket for movement-completion events
     misty.connect_ws()
 
     map_id, active_map = select_map()
 
-    # Startup: turn to face children and tilt head up before check-in
     misty.turn_180()
-    misty.head(pitch=-40)
-    misty.speak("Hello! I am Misty and I am so excited for today's missions!")
+    misty.head(pitch=-40, yaw=-45)
+    misty.speak("Hello! I am Misty and I am SO excited for today's missions!")
     misty.speak("When you are ready to play, press the green button to get started!")
 
     while True:
@@ -321,10 +343,10 @@ def run_forever():
 
         print("\n  Game over. Ready for the next players!")
         misty.led_ready()
-        # Face kids for the next round of check-in
+        # run_game leaves Misty facing the maze; turn to face kids for next check-in
         misty.turn_180()
-        misty.head(pitch=-40)
-        misty.speak("That was amazing! Who is ready to play next?")
+        misty.head(pitch=-40, yaw=-45)
+        misty.speak("That was AMAZING! Who is ready to play next?")
         misty.speak("Step up and show me your ID card!")
         time.sleep(3)
 

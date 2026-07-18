@@ -152,16 +152,40 @@ def wait_for_tags_removed(speak_fn=None) -> str:
         if speak_fn:
             speak_fn(text)
 
-    _say("Please remove all your cards from the slots.")
+    _say("Let's remove all cards from the slot!")
     if _wait_clear(30.0):
         return "ok"
 
-    _say("Cards still in the slots! Please take them all off now!")
-    if _wait_clear(60.0):
+    _say("Cards still in the slots! Let's take them all off right now!")
+    if _wait_clear(15.0):
         return "ok"
 
     _say("Cards left on too long. Ending this game session.")
     return "powerdown"
+
+
+def wait_for_button(game_over_event: threading.Event | None = None) -> bool:
+    """Block until the green button (space/enter) is pressed once.
+
+    Returns True if the button was pressed, False if game_over fired first.
+    Safe to call between run_detector() calls — uses the same stdin dispatcher.
+    """
+    global _active_press_queue
+    q: queue.Queue = queue.Queue()
+    _start_stdin_thread()
+    with _active_press_queue_lock:
+        _active_press_queue = q
+
+    if game_over_event is not None:
+        def _watch():
+            game_over_event.wait()
+            q.put("game_over")
+        threading.Thread(target=_watch, daemon=True).start()
+
+    event = q.get()
+    with _active_press_queue_lock:
+        _active_press_queue = None
+    return event != "game_over"
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
