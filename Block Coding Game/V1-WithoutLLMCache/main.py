@@ -6,11 +6,22 @@ import narrator
 import id_scanner
 from recorder     import GameRecorder
 from maps         import MAPS, select_checkpoints, Checkpoint
-from detector     import run_detector, wait_for_tags_removed, wait_for_button
+from detector     import (run_detector, wait_for_tags_removed, wait_for_button,
+                          pause_rfid_polling, resume_rfid_polling)
 from validator    import validate_and_message, ValidationResult
 from game_logger  import GameLogger
 
 GAME_DURATION = 8 * 60   # 480 seconds
+
+
+def _drive(drive_map: list):
+    """Execute a drive map with RFID polling paused, so SPI scans never
+    compete with drive commands for CPU while Misty is moving."""
+    pause_rfid_polling()
+    try:
+        misty.execute_drive_map(drive_map)
+    finally:
+        resume_rfid_polling()
 
 
 def select_map():
@@ -33,10 +44,10 @@ def select_map():
 def _return_misty_home(cp: Checkpoint, map_id: int, drove_out: bool = False):
     """Bring Misty back to Home(0,0) after a timer expiry."""
     if drove_out and cp.return_map:
-        misty.execute_drive_map(cp.return_map)
+        _drive(cp.return_map)
     if map_id == 2 and cp.home_on_timeout:
         misty.speak("Time is up! I am heading back home now.")
-        misty.execute_drive_map(cp.home_on_timeout)
+        _drive(cp.home_on_timeout)
 
 
 def run_game(map_id: int, active_map, players: list[dict]):
@@ -199,7 +210,7 @@ def run_game(map_id: int, active_map, players: list[dict]):
                                           checkpoint.sequence, "success"))
 
                 print(f"\n   Driving out...")
-                misty.execute_drive_map(checkpoint.drive_map)
+                _drive(checkpoint.drive_map)
 
                 # ── Arrived at checkpoint ─────────────────────────────────
                 misty.wave()
@@ -215,7 +226,7 @@ def run_game(map_id: int, active_map, players: list[dict]):
                     # ── Happy journey home ────────────────────────────────
                     misty.speak("Woohoooo! Now I am heading back home — home sweet home, here I come!")
                     print(f"   Returning...")
-                    misty.execute_drive_map(checkpoint.return_map)
+                    _drive(checkpoint.return_map)
                     last_completed_cp = checkpoint
 
                     if game_over_event.is_set():

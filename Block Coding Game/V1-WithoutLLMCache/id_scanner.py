@@ -13,7 +13,6 @@ Usage:
     players = wait_for_players()   # blocks until 2 IDs scanned
 """
 
-import base64
 import json
 import sys
 import time
@@ -29,8 +28,8 @@ import misty
 USERS_PATH      = Path(__file__).parent.parent.parent / "Documents" / "users.json"
 ARUCO_DICT      = cv2.aruco.DICT_6X6_1000   # covers IDs up to 999
 POLL_INTERVAL   = 0.05                       # seconds between frame reads (USB webcam)
-MISTY_POLL_INTERVAL = 0.3                    # seconds between frame fetches (Misty camera)
-STABLE_FRAMES   = 4                          # frames a marker must appear before accepting
+MISTY_POLL_INTERVAL = 0.15                   # seconds between frame fetches (~6 fps, matches proven setup)
+STABLE_FRAMES   = 8                          # frames a marker must appear before accepting
 MOTION_PIXELS   = 2000                       # foreground pixels to count as "someone arrived"
 MOTION_STABLE   = 4                          # consecutive motion frames before prompting
 
@@ -39,24 +38,39 @@ MOTION_STABLE   = 4                          # consecutive motion frames before 
 USE_MISTY_CAMERA = True
 
 
-# ── Misty camera helper ───────────────────────────────────────────────────────
+# ── Misty camera helpers ──────────────────────────────────────────────────────
+
+def _reset_misty_camera():
+    """Cycle Misty's camera service to clear a stuck capture lock (409 busy)."""
+    try:
+        requests.post(f"http://{misty.MISTY_IP}/api/services/camera/disable",
+                      json={}, timeout=3.0)
+        time.sleep(2.0)
+        requests.post(f"http://{misty.MISTY_IP}/api/services/camera/enable",
+                      json={}, timeout=3.0)
+        time.sleep(3.0)
+        print("  [misty_cam] Camera service reset.")
+    except Exception as e:
+        print(f"  [misty_cam] reset failed: {e}")
+
 
 def _read_misty_frame():
-    """Fetch one frame from Misty's front camera. Returns an OpenCV BGR image or None."""
+    """Fetch one 640x480 JPEG frame from Misty's camera (binary mode).
+    Returns an OpenCV BGR image or None."""
     try:
         r = requests.get(
             f"http://{misty.MISTY_IP}/api/cameras/rgb",
-            params={"Base64": "true"},
-            timeout=5,
+            params={"Width": 640, "Height": 480},
+            timeout=1.5,
         )
-        r.raise_for_status()
-        img_b64 = r.json()["result"]["base64"]
-        img_bytes = base64.b64decode(img_b64)
-        frame = cv2.imdecode(np.frombuffer(img_bytes, dtype=np.uint8), cv2.IMREAD_COLOR)
-        return frame
+        if r.status_code == 200 and len(r.content) > 100:
+            return cv2.imdecode(np.frombuffer(r.content, np.uint8), cv2.IMREAD_COLOR)
+        if r.status_code == 409:
+            print("  [misty_cam] Camera busy — resetting service...")
+            _reset_misty_camera()
     except Exception as e:
         print(f"  [misty_cam] {e}")
-        return None
+    return None
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

@@ -98,6 +98,18 @@ _readers: list | None = None
 _card_map: dict[str, int] = {}
 _spi_lock = threading.Lock()   # prevents concurrent scan_once calls from multiple threads
 
+# Movement gate — set while Misty is driving so SPI polling never competes
+# with drive commands for CPU/GIL time.
+_polling_paused = threading.Event()
+
+
+def pause_rfid_polling():
+    _polling_paused.set()
+
+
+def resume_rfid_polling():
+    _polling_paused.clear()
+
 
 def _load_card_map() -> dict[str, int]:
     if not CARD_MAP_PATH.exists():
@@ -131,6 +143,9 @@ def _buzz(duration: float = 0.1):
 def _first_tag_watcher(done_event: threading.Event,
                        first_tag_event: threading.Event):
     while not done_event.is_set() and not first_tag_event.is_set():
+        if _polling_paused.is_set():
+            time.sleep(0.2)
+            continue
         with _spi_lock:
             for name, reader in _readers:
                 if rfid_reader.scan_once(name, reader):
@@ -274,6 +289,9 @@ def run_detector(n_slots: int = N_READERS,
         def _card_watcher():
             prev = [None] * n_slots
             while not done_event.is_set():
+                if _polling_paused.is_set():
+                    time.sleep(0.2)
+                    continue
                 current = _read_snapshot()
                 for idx, (old_uid, new_uid) in enumerate(zip(prev, current)):
                     if old_uid is None and new_uid is not None:
