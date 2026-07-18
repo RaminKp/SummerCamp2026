@@ -307,10 +307,6 @@ def run_game(map_id: int, active_map, players: list[dict]):
     misty.enable_hazards()
     id_scanner.update_play_counts(players)
 
-    # Final reset turn so run_forever always starts the between-game flow
-    # with Misty in a known maze-facing orientation.
-    misty.turn_180()
-
 
 def run_forever():
     """Main loop: scan IDs → play game → repeat."""

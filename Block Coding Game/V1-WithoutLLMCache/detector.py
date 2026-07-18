@@ -16,6 +16,8 @@ import sys
 import json
 import time
 import queue
+import signal
+import atexit
 import threading
 from pathlib import Path
 
@@ -25,28 +27,55 @@ from pathlib import Path
 _active_press_queue: queue.Queue | None = None
 _active_press_queue_lock = threading.Lock()
 _stdin_thread_started    = False
+_term_fd: int | None     = None
+_term_old                = None
+
+
+def _restore_terminal():
+    """Restore terminal to cooked mode — called on exit and Ctrl+C."""
+    global _term_old, _term_fd
+    if _term_old is not None and _term_fd is not None:
+        try:
+            import termios
+            termios.tcsetattr(_term_fd, termios.TCSADRAIN, _term_old)
+        except Exception:
+            pass
+        _term_old = None
+
+
+atexit.register(_restore_terminal)
+
 
 def _start_stdin_thread():
-    global _stdin_thread_started
+    global _stdin_thread_started, _term_fd, _term_old
     if _stdin_thread_started:
         return
     _stdin_thread_started = True
 
     def _reader():
+        global _term_fd, _term_old
         import tty, termios
-        fd  = sys.stdin.fileno()
-        old = termios.tcgetattr(fd)
-        tty.setraw(fd)
+        _term_fd  = sys.stdin.fileno()
+        _term_old = termios.tcgetattr(_term_fd)
+        tty.setraw(_term_fd)
         try:
             while True:
                 ch = sys.stdin.read(1)
+                if ch == '\x03':          # Ctrl+C in raw mode
+                    _restore_terminal()
+                    signal.raise_signal(signal.SIGINT)
+                    return
+                if ch == '\x1c':          # Ctrl+\ — hard kill fallback
+                    _restore_terminal()
+                    signal.raise_signal(signal.SIGTERM)
+                    return
                 if ch in (' ', '\r', '\n'):
                     with _active_press_queue_lock:
                         q = _active_press_queue
                     if q is not None:
                         q.put('press')
         finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old)
+            _restore_terminal()
 
     threading.Thread(target=_reader, daemon=True).start()
 
