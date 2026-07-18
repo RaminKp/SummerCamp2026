@@ -244,8 +244,9 @@ def enable_hazards():
 # ── Expressive ────────────────────────────────────────────────────────────────
 
 def wave():
-    """Wave right arm — used at checkpoint arrivals."""
+    """Wave both arms — used at checkpoint arrivals."""
     for pos in [-29, 60, -29, 60, -29, 90]:
+        _post("arms", {"Arm": "left",  "Position": pos, "Velocity": 85})
         _post("arms", {"Arm": "right", "Position": pos, "Velocity": 85})
         time.sleep(0.35)
 

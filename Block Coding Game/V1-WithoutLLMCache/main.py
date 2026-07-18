@@ -223,13 +223,11 @@ def run_game(map_id: int, active_map, players: list[dict]):
                         outcome = "TimeUp"
                         break
 
-                    # ── Back at home — face kids ──────────────────────────
+                    # ── Back at home ──────────────────────────────────────
                     misty.wave()
-                    misty.turn_180()
-                    misty.head(pitch=-40, yaw=-45)
                     misty.speak("YESSSSS! I am back at base! You are an INCREDIBLE mission team!")
 
-                    # ── Remove cards first ────────────────────────────────
+                    # ── Remove cards ──────────────────────────────────────
                     removal = wait_for_tags_removed(speak_fn=misty.speak)
                     if removal == "powerdown":
                         print("\n  [RFID] Tags not removed — ending session.")
@@ -252,9 +250,7 @@ def run_game(map_id: int, active_map, players: list[dict]):
                         outcome = "TimeUp"
                         break
 
-                    misty.speak("Let me take my position in the maze!")
-                    misty.turn_180()
-                    misty.head(pitch=0, yaw=0)
+                    misty.turn_180()  # face the maze
 
                 if game_over_event.is_set():
                     outcome = "TimeUp"
