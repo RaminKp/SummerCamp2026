@@ -13,22 +13,50 @@ Usage:
     players = wait_for_players()   # blocks until 2 IDs scanned
 """
 
+import base64
 import json
 import sys
 import time
 from pathlib import Path
 
 import cv2
+import numpy as np
+import requests
 import misty
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
 USERS_PATH      = Path(__file__).parent.parent.parent / "Documents" / "users.json"
 ARUCO_DICT      = cv2.aruco.DICT_6X6_1000   # covers IDs up to 999
-POLL_INTERVAL   = 0.05                       # seconds between frame reads
-STABLE_FRAMES   = 8                          # frames a marker must appear before accepting
+POLL_INTERVAL   = 0.05                       # seconds between frame reads (USB webcam)
+MISTY_POLL_INTERVAL = 0.3                    # seconds between frame fetches (Misty camera)
+STABLE_FRAMES   = 4                          # frames a marker must appear before accepting
 MOTION_PIXELS   = 2000                       # foreground pixels to count as "someone arrived"
 MOTION_STABLE   = 4                          # consecutive motion frames before prompting
+
+# ── Camera selection ──────────────────────────────────────────────────────────
+# Set to True to use Misty's front camera, False to use the local USB webcam.
+USE_MISTY_CAMERA = True
+
+
+# ── Misty camera helper ───────────────────────────────────────────────────────
+
+def _read_misty_frame():
+    """Fetch one frame from Misty's front camera. Returns an OpenCV BGR image or None."""
+    try:
+        r = requests.get(
+            f"http://{misty.MISTY_IP}/api/cameras/rgb",
+            params={"Base64": "true"},
+            timeout=5,
+        )
+        r.raise_for_status()
+        img_b64 = r.json()["result"]["base64"]
+        img_bytes = base64.b64decode(img_b64)
+        frame = cv2.imdecode(np.frombuffer(img_bytes, dtype=np.uint8), cv2.IMREAD_COLOR)
+        return frame
+    except Exception as e:
+        print(f"  [misty_cam] {e}")
+        return None
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -80,13 +108,17 @@ def _wait_for_presence(cap) -> None:
 
 def _wait_for_button():
     """Block until the green button (space/enter) is pressed."""
-    import tty, termios
+    import tty, termios, signal
     fd  = sys.stdin.fileno()
     old = termios.tcgetattr(fd)
     try:
         tty.setraw(fd)
         while True:
             ch = sys.stdin.read(1)
+            if ch == '\x03':   # Ctrl+C in raw mode
+                termios.tcsetattr(fd, termios.TCSADRAIN, old)
+                signal.raise_signal(signal.SIGINT)
+                return
             if ch in (' ', '\r', '\n'):
                 return
     finally:
@@ -162,10 +194,12 @@ def wait_for_players(n: int = 2) -> list[dict]:
     print(f"  PLAYER CHECK-IN  ({n} players)")
     print(f"{'='*50}\n")
 
+    if USE_MISTY_CAMERA:
+        return _wait_for_players_misty(n, users)
+
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
         print("  [id_scanner] No webcam found — falling back to keyboard entry.")
-        # No webcam: skip presence detection, go straight to button + keyboard
         misty.speak("Press the green button when you are ready to play!")
         _wait_for_button()
         return _keyboard_fallback(n, users)
@@ -194,8 +228,16 @@ def wait_for_players(n: int = 2) -> list[dict]:
 
             last_id      = None
             stable_count = 0
+            last_prompt  = time.time()
 
             while True:
+                if time.time() - last_prompt >= 15.0:
+                    misty.speak(
+                        f"I am still waiting! Player {slot}, please hold your ID card up to the camera!",
+                        wait=False,
+                    )
+                    last_prompt = time.time()
+
                 ret, frame = cap.read()
                 if not ret:
                     time.sleep(POLL_INTERVAL)
@@ -246,6 +288,109 @@ def wait_for_players(n: int = 2) -> list[dict]:
 
     finally:
         cap.release()
+
+    return players_found
+
+
+def _wait_for_players_misty(n: int, users: dict) -> list[dict]:
+    """ID scan using Misty's front camera instead of a USB webcam."""
+    print("  [id_scanner] Using Misty's camera for ArUco scanning.")
+
+    # Presence detection: fetch frames and run MOG2 on them
+    subtractor = cv2.createBackgroundSubtractorMOG2(history=60, varThreshold=40,
+                                                     detectShadows=False)
+    stable = 0
+    print("  Watching for players to approach (Misty's camera)...")
+    while True:
+        frame = _read_misty_frame()
+        if frame is None:
+            time.sleep(MISTY_POLL_INTERVAL)
+            continue
+        small  = cv2.resize(frame, (320, 240))
+        mask   = subtractor.apply(small)
+        motion = cv2.countNonZero(mask)
+        if motion > MOTION_PIXELS:
+            stable += 1
+            if stable >= MOTION_STABLE:
+                break
+        else:
+            stable = 0
+        time.sleep(MISTY_POLL_INTERVAL)
+
+    print("  Someone detected — prompting for button press.")
+    misty.speak("Hello there! Press the green button when you are ready to play!")
+    _wait_for_button()
+    print("  Button pressed — starting ID scan.")
+    misty.speak("Great! Both players, please show me your ID cards!")
+
+    dictionary = cv2.aruco.getPredefinedDictionary(ARUCO_DICT)
+    detector   = cv2.aruco.ArucoDetector(dictionary, cv2.aruco.DetectorParameters())
+
+    players_found: list[dict] = []
+    ids_seen: set[int]        = set()
+
+    while len(players_found) < n:
+        slot = len(players_found) + 1
+        print(f"  Hold Player {slot}'s ID card up to Misty's camera...")
+        misty.speak(f"Player {slot}, please hold your ID card up to my camera!")
+
+        last_id      = None
+        stable_count = 0
+        last_prompt  = time.time()
+
+        while True:
+            if time.time() - last_prompt >= 15.0:
+                misty.speak(
+                    f"I am still waiting! Player {slot}, hold your ID card up to my camera!",
+                    wait=False,
+                )
+                last_prompt = time.time()
+
+            frame = _read_misty_frame()
+            if frame is None:
+                time.sleep(MISTY_POLL_INTERVAL)
+                continue
+
+            _, ids, _ = detector.detectMarkers(frame)
+
+            if ids is not None:
+                for id_arr in ids:
+                    aruco_id = int(id_arr[0])
+                    if aruco_id in ids_seen:
+                        continue
+                    if aruco_id == last_id:
+                        stable_count += 1
+                    else:
+                        last_id      = aruco_id
+                        stable_count = 1
+
+                    if stable_count >= STABLE_FRAMES:
+                        player = _player_from_id(aruco_id, users)
+                        if player is None:
+                            print(f"  ID {aruco_id} not registered — try another card.")
+                            misty.speak("Hmm, I don't recognise that card. Try another!")
+                            last_id      = None
+                            stable_count = 0
+                            continue
+                        ids_seen.add(aruco_id)
+                        players_found.append(player)
+                        name = player["name"]
+                        print(f"  ✓ Player {slot}: {name} (ID {aruco_id})"
+                              f"  [no_video={player['no_video']}]\n")
+                        misty.speak(
+                            f"Welcome, {name}! "
+                            "I am so happy to have you on the mission team!"
+                        )
+                        time.sleep(1.0)
+                        break
+                else:
+                    time.sleep(MISTY_POLL_INTERVAL)
+                    continue
+                break
+            else:
+                last_id      = None
+                stable_count = 0
+                time.sleep(MISTY_POLL_INTERVAL)
 
     return players_found
 

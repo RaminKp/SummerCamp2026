@@ -27,10 +27,12 @@ PITCH        = 1.3                   # >1 = higher pitch (clearer for young kids
 SPEECH_RATE  = 0.9                   # slightly faster for energy; still clear
 VOLUME       = 65                    # speaker volume 0-100 (set once at startup)
 
-# Reuse one TCP connection for every request instead of a new handshake per
-# command — on a flaky/congested hotspot link the handshake itself is a
-# common point of packet loss.
-_session = requests.Session()
+# Separate sessions so drive commands, arm gestures, and general API calls
+# never queue behind each other — requests.Session is not thread-safe for
+# concurrent use across threads.
+_session       = requests.Session()   # head, LED, speech, hazards, etc.
+_drive_session = requests.Session()   # drive/time and drive/stop only
+_arm_session   = requests.Session()   # wave / bye_gesture only
 
 
 # ── WebSocket movement-completion tracking ────────────────────────────────────
@@ -112,11 +114,13 @@ def _wait_stopped(fallback_ms: int):
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _post(endpoint: str, payload: dict, retries: int = 5) -> requests.Response:
+def _post(endpoint: str, payload: dict, retries: int = 5,
+          session: requests.Session | None = None) -> requests.Response:
+    s = session or _session
     last_err = None
     for attempt in range(1, retries + 1):
         try:
-            r = _session.post(f"{BASE_URL}/{endpoint}", json=payload, timeout=5)
+            r = s.post(f"{BASE_URL}/{endpoint}", json=payload, timeout=5)
             r.raise_for_status()
             return r
         except (requests.exceptions.ConnectionError,
@@ -148,7 +152,7 @@ def forward(cm: float):
     ms = _cm_to_ms(cm)
     print(f"    → forward {cm}cm ({ms}ms)")
     _stopped_event.clear()
-    _post("drive/time", {"LinearVelocity": DRIVE_SPEED, "AngularVelocity": 0, "TimeMs": ms})
+    _post("drive/time", {"linearVelocity": DRIVE_SPEED, "angularVelocity": 0, "timeMs": ms}, session=_drive_session)
     _wait_stopped(ms)
 
 
@@ -156,7 +160,7 @@ def back(cm: float):
     ms = _cm_to_ms(cm)
     print(f"    → back {cm}cm ({ms}ms)")
     _stopped_event.clear()
-    _post("drive/time", {"LinearVelocity": -DRIVE_SPEED, "AngularVelocity": 0, "TimeMs": ms})
+    _post("drive/time", {"linearVelocity": -DRIVE_SPEED, "angularVelocity": 0, "timeMs": ms}, session=_drive_session)
     _wait_stopped(ms)
 
 
@@ -164,7 +168,7 @@ def turn_left(degrees: float):
     ms = _deg_to_ms(degrees)
     print(f"    → turn left {degrees}° ({ms}ms)")
     _stopped_event.clear()
-    _post("drive/time", {"LinearVelocity": 0, "AngularVelocity": TURN_SPEED, "TimeMs": ms})
+    _post("drive/time", {"linearVelocity": 0, "angularVelocity": TURN_SPEED, "timeMs": ms}, session=_drive_session)
     _wait_stopped(ms)
 
 
@@ -172,7 +176,7 @@ def turn_right(degrees: float):
     ms = _deg_to_ms(degrees)
     print(f"    → turn right {degrees}° ({ms}ms)")
     _stopped_event.clear()
-    _post("drive/time", {"LinearVelocity": 0, "AngularVelocity": -TURN_SPEED, "TimeMs": ms})
+    _post("drive/time", {"linearVelocity": 0, "angularVelocity": -TURN_SPEED, "timeMs": ms}, session=_drive_session)
     _wait_stopped(ms)
 
 
@@ -180,19 +184,19 @@ def turn_180():
     ms = _deg_to_ms(180)
     print(f"    → turn 180° ({ms}ms)")
     _stopped_event.clear()
-    _post("drive/time", {"LinearVelocity": 0, "AngularVelocity": TURN_SPEED, "TimeMs": ms})
+    _post("drive/time", {"linearVelocity": 0, "angularVelocity": TURN_SPEED, "timeMs": ms}, session=_drive_session)
     _wait_stopped(ms)
 
 
 def head(pitch: float = 0, roll: float = 0, yaw: float = 0, velocity: float = 60):
     """Move Misty's head. Pitch: negative = up, positive = down (range ~-40 to 26)."""
-    _post("head", {"Pitch": pitch, "Roll": roll, "Yaw": yaw, "Velocity": velocity})
+    _post("head", {"pitch": pitch, "roll": roll, "yaw": yaw, "velocity": velocity})
     time.sleep(0.5)
 
 
 def stop():
     print("    → stop")
-    _post("drive/stop", {})
+    _post("drive/stop", {}, session=_drive_session)
 
 
 # ── Speech ────────────────────────────────────────────────────────────────────
@@ -243,20 +247,33 @@ def enable_hazards():
 
 # ── Expressive ────────────────────────────────────────────────────────────────
 
-def wave():
-    """Wave both arms — used at checkpoint arrivals."""
+def _arm(left_pos: float, right_pos: float, velocity: float = 85):
+    """Single arm movement — fail fast (1 retry) so gesture failures never block."""
+    try:
+        _post("arms/set", {
+            "leftArmPosition":  left_pos,
+            "rightArmPosition": right_pos,
+            "leftArmVelocity":  velocity,
+            "rightArmVelocity": velocity,
+        }, retries=1, session=_arm_session)
+    except Exception as e:
+        print(f"  [arm] {e}")
+
+
+def _wave_sync():
     for pos in [-29, 60, -29, 60, -29, 90]:
-        _post("arms", {"Arm": "left",  "Position": pos, "Velocity": 85})
-        _post("arms", {"Arm": "right", "Position": pos, "Velocity": 85})
+        _arm(pos, pos)
         time.sleep(0.35)
+
+
+def wave():
+    """Wave both arms in the background — never blocks the drive system."""
+    threading.Thread(target=_wave_sync, daemon=True).start()
 
 
 def bye_gesture():
-    """Wave both arms for goodbye."""
-    for pos in [-29, 60, -29, 60, -29, 90]:
-        _post("arms", {"Arm": "left",  "Position": pos, "Velocity": 85})
-        _post("arms", {"Arm": "right", "Position": pos, "Velocity": 85})
-        time.sleep(0.35)
+    """Wave both arms for goodbye (blocking — called when no drive follows)."""
+    _wave_sync()
 
 
 def celebrate():
@@ -267,62 +284,15 @@ def celebrate():
     wave()
     speak("YESSSSS! All missions complete — you are an INCREDIBLE mission team!")
     # Head nod
-    _post("head", {"Pitch": -10, "Roll": 0, "Yaw": -45, "Velocity": 60})
+    _post("head", {"pitch": -10, "roll": 0, "yaw": -45, "velocity": 60})
     time.sleep(0.4)
-    _post("head", {"Pitch": 10,  "Roll": 0, "Yaw": -45, "Velocity": 60})
+    _post("head", {"pitch": 10,  "roll": 0, "yaw": -45, "velocity": 60})
     time.sleep(0.4)
-    _post("head", {"Pitch": -40, "Roll": 0, "Yaw": -45, "Velocity": 60})
+    _post("head", {"pitch": -40, "roll": 0, "yaw": -45, "velocity": 60})
     time.sleep(0.4)
     bye_gesture()
 
 
-def recalibrate_at_home(marker_id: int = 0, nudge_deg: float = 8.0):
-    """
-    Take a photo with Misty's camera, detect the home ArUco marker,
-    and nudge left/right to re-centre. Place marker ID 0 on the wall/floor
-    directly in front of Misty's home position at camera height.
-    """
-    import base64
-    import numpy as np
-    import cv2
-
-    print("  [recalibrate] Taking picture...")
-    try:
-        r = requests.get(f"{BASE_URL}/cameras/rgb", params={"Base64": "true"}, timeout=10)
-        r.raise_for_status()
-        img_b64 = r.json()["result"]["base64"]
-    except Exception as e:
-        print(f"  [recalibrate] Camera error: {e} — skipping")
-        return
-
-    img_bytes  = base64.b64decode(img_b64)
-    frame      = cv2.imdecode(np.frombuffer(img_bytes, dtype=np.uint8), cv2.IMREAD_COLOR)
-    dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
-    detector   = cv2.aruco.ArucoDetector(dictionary, cv2.aruco.DetectorParameters())
-    corners, ids, _ = detector.detectMarkers(frame)
-
-    if ids is None:
-        print(f"  [recalibrate] No markers detected — skipping")
-        return
-
-    for i, mid in enumerate(ids):
-        if int(mid[0]) == marker_id:
-            cx         = corners[i][0][:, 0].mean()
-            frame_cx   = frame.shape[1] / 2
-            offset_px  = cx - frame_cx          # + = marker is right → robot drifted left
-            threshold  = frame.shape[1] * 0.05  # 5 % of frame width
-
-            if offset_px > threshold:
-                print(f"  [recalibrate] Drifted left ({offset_px:.0f}px) — nudging right {nudge_deg}°")
-                turn_right(nudge_deg)
-            elif offset_px < -threshold:
-                print(f"  [recalibrate] Drifted right ({abs(offset_px):.0f}px) — nudging left {nudge_deg}°")
-                turn_left(nudge_deg)
-            else:
-                print(f"  [recalibrate] On target (offset {offset_px:.0f}px) — no correction")
-            return
-
-    print(f"  [recalibrate] Marker {marker_id} not in frame — skipping")
 
 
 def execute_drive_map(drive_map: list[tuple]):
