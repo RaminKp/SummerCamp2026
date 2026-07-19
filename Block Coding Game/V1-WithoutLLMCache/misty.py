@@ -164,9 +164,9 @@ def _deg_to_ms(degrees: float) -> int:
 def _drive_time(linear: float, angular: float, ms: int):
     """Send one drive/time command and wait it out.
 
-    Verified against the WebSocket: if the command was accepted but the event
-    stream saw no actual motion during its window (command accepted, wheels
-    never turned), re-send it ONCE. Only trusted while the WS is connected.
+    NO automatic re-send: the WS event stream misses real movements too
+    often to be trusted as a motion verifier (a re-sent forward doubled
+    Misty into a wall). It still logs, for diagnostics only.
     """
     payload = {"linearVelocity": linear, "angularVelocity": angular, "timeMs": ms}
     _stopped_event.clear()
@@ -175,11 +175,7 @@ def _drive_time(linear: float, angular: float, ms: int):
     _wait_stopped(ms)
 
     if _ws_connected and not _move_seen.is_set():
-        print("    [drive] command accepted but NO motion seen — re-sending once")
-        _stopped_event.clear()
-        _move_seen.clear()
-        _post("drive/time", payload, session=_drive_session)
-        _wait_stopped(ms)
+        print("    [drive] WS saw no motion for this command (log only, no action)")
 
 
 def forward(cm: float):

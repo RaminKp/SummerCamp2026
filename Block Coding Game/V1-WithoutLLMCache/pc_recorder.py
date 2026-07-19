@@ -16,6 +16,8 @@ Run on the Linux PC (needs: sudo apt install ffmpeg):
 Recordings are saved to a `recordings/` folder next to this file.
 """
 
+from __future__ import annotations
+
 import signal
 import subprocess
 import threading

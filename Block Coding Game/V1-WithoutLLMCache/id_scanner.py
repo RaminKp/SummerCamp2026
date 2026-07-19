@@ -121,22 +121,14 @@ def _wait_for_presence(cap) -> None:
 
 
 def _wait_for_button():
-    """Block until the green button (space/enter) is pressed."""
-    import tty, termios, signal
-    fd  = sys.stdin.fileno()
-    old = termios.tcgetattr(fd)
-    try:
-        tty.setraw(fd)
-        while True:
-            ch = sys.stdin.read(1)
-            if ch == '\x03':   # Ctrl+C in raw mode
-                termios.tcsetattr(fd, termios.TCSADRAIN, old)
-                signal.raise_signal(signal.SIGINT)
-                return
-            if ch in (' ', '\r', '\n'):
-                return
-    finally:
-        termios.tcsetattr(fd, termios.TCSADRAIN, old)
+    """Block until the green button (space/enter) is pressed.
+
+    Delegates to detector's single stdin dispatcher — only ONE thread may
+    ever read stdin, or the two readers steal each other's keypresses
+    (that bug broke check-in after the first game).
+    """
+    from detector import wait_for_button as _dispatcher_wait
+    _dispatcher_wait()
 
 
 def _keyboard_fallback(n: int, users: dict) -> list[dict]:
