@@ -149,6 +149,7 @@ def run_game(map_id: int, active_map, players: list[dict]):
     # ── Game loop ─────────────────────────────────────────────────────────────
     outcome              = "Completed"
     last_completed_cp: Checkpoint | None = None
+    went_home_on_timeout = False   # guards against driving home twice
 
     for i, checkpoint in enumerate(checkpoints, 1):
         is_last = (i == total)
@@ -249,6 +250,7 @@ def run_game(map_id: int, active_map, players: list[dict]):
 
                 if game_over_event.is_set():
                     _return_misty_home(checkpoint, map_id, drove_out=True)
+                    went_home_on_timeout = True
                     outcome = "TimeUp"
                     break
 
@@ -262,6 +264,7 @@ def run_game(map_id: int, active_map, players: list[dict]):
 
                     if game_over_event.is_set():
                         _return_misty_home(checkpoint, map_id, drove_out=False)
+                        went_home_on_timeout = True
                         outcome = "TimeUp"
                         break
 
@@ -329,7 +332,7 @@ def run_game(map_id: int, active_map, players: list[dict]):
         print(f"\n{'='*50}")
         print("  TIME'S UP — GAME OVER")
         print(f"{'='*50}\n")
-        if map_id == 2 and last_completed_cp is not None:
+        if map_id == 2 and last_completed_cp is not None and not went_home_on_timeout:
             _return_misty_home(last_completed_cp, map_id, drove_out=False)
         misty.led_error()
         misty.turn_180()

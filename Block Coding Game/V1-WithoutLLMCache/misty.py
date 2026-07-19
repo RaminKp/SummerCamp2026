@@ -353,10 +353,14 @@ if __name__ == "__main__":
     else:
         print("Testing connection to Misty...")
         try:
-            r = requests.get(f"{BASE_URL}/device", timeout=5)
-            data = r.json()
-            battery = data['result']['batteryLevel']['chargePercent']
-            print(f"Connected!  Battery: {battery:.0%}")
+            r = requests.get(f"{BASE_URL}/battery", timeout=5)
+            b = r.json()["result"]
+            print(f"Connected!  Battery charge: {b['chargePercent']:.0%}   "
+                  f"health: {b['healthPercent']:.0%}   "
+                  f"voltage: {b['voltage']:.2f}V   ({b['state']})")
+            if b["healthPercent"] < 0.5:
+                print("  ⚠  Battery health is LOW — expect weak/missed movements. "
+                      "Keep charge near 100% and consider a replacement battery.")
             print("\nTesting LED...")
             led_ready();   time.sleep(0.8)
             led_error();   time.sleep(0.8)
