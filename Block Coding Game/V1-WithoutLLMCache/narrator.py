@@ -37,14 +37,17 @@ _SYSTEM = (
     "Reply with ONE short sentence only — under 12 words. "
     "Simple words, warm and fun. No emojis, no lists, no markdown. "
     "IMPORTANT: Always use the exact destination name given to you — never invent "
-    "synonyms or alternative names for it (e.g. never say 'kitchen' instead of 'Restaurant')."
+    "synonyms or alternative names for it (e.g. never say 'kitchen' instead of 'Restaurant'). "
+    "NEVER reveal the solution or name any move cards — do not say 'straight', "
+    "'forward', 'left', 'right', 'rotate', or give directions. The children must "
+    "figure out the moves themselves."
 )
 
 _LIVE_PROMPTS = {
     "hint": (
-        "Mission {phase} of {total}. Destination is the {location}. Moves needed: {moves}. "
-        "Give ONE excited clue that mentions '{location}' by name — under 12 words. "
-        "Be energetic and fun for kids."
+        "Mission {phase} of {total}. Destination is the {location}. "
+        "Give ONE excited line that names '{location}' and cheers the kids on — under 12 words. "
+        "Do NOT mention any moves, directions, or cards. Be energetic and fun for kids."
     ),
     "success": (
         "Children solved mission {phase} — Misty is heading to the {location} now. "
@@ -102,8 +105,8 @@ _INTRO_FALLBACK = {
     "how_to_play": (
         "You have six card slots in front of you. "
         "The Straight card moves me ahead one step. "
-        "The Left card turns me to my left. "
-        "The Right card turns me to my right. "
+        "The Left card rotates me to my left. "
+        "The Right card rotates me to my right. "
         "Place your cards in order from slot one to six to build a path, "
         "then press the green button to send me on my way!"
     ),

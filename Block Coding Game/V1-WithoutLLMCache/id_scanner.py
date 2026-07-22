@@ -120,15 +120,16 @@ def _wait_for_presence(cap) -> None:
         time.sleep(POLL_INTERVAL)
 
 
-def _wait_for_button():
+def _wait_for_button(on_press=None):
     """Block until the green button (space/enter) is pressed.
 
     Delegates to detector's single stdin dispatcher — only ONE thread may
     ever read stdin, or the two readers steal each other's keypresses
     (that bug broke check-in after the first game).
+    on_press: fired the instant the button is pressed (starts recording).
     """
     from detector import wait_for_button as _dispatcher_wait
-    _dispatcher_wait()
+    _dispatcher_wait(on_press=on_press)
 
 
 def _keyboard_fallback(n: int, users: dict) -> list[dict]:
@@ -186,11 +187,11 @@ def _wait_for_presence(cap) -> None:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-def wait_for_players(n: int = 2) -> list[dict]:
+def wait_for_players(n: int = 2, on_button=None) -> list[dict]:
     """Wait for a green-button press, then scan n players' ArUco ID cards.
 
-    Button press starts the flow and triggers video recording in main.py.
-    consent=false players can play — they are just not recorded.
+    Everything starts on the button press — no presence/motion detection.
+    on_button: fired the instant the button is pressed (starts recording).
     Falls back to keyboard entry if no webcam is available.
     Returns list of player dicts, each with a 'no_video' bool.
     """
@@ -201,22 +202,18 @@ def wait_for_players(n: int = 2) -> list[dict]:
     print(f"{'='*50}\n")
 
     if USE_MISTY_CAMERA:
-        return _wait_for_players_misty(n, users)
+        return _wait_for_players_misty(n, users, on_button=on_button)
 
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
         print("  [id_scanner] No webcam found — falling back to keyboard entry.")
         misty.speak("Press the green button when you are ready to play!")
-        _wait_for_button()
+        _wait_for_button(on_press=on_button)
         return _keyboard_fallback(n, users)
 
-    # ── Phase 1: motion detection — wait until someone approaches ────────────
-    _wait_for_presence(cap)
-    print("  Someone detected — prompting for button press.")
-    misty.speak("Hello there! Press the green button when you are ready to play!")
-
-    # ── Phase 2: wait for green button press ──────────────────────────────────
-    _wait_for_button()
+    # Everything starts on the button press.
+    misty.speak("Press the green button when you are ready to play!")
+    _wait_for_button(on_press=on_button)
     print("  Button pressed — starting ID scan.")
     misty.speak("Great! Both players, please show me your ID cards!")
 
@@ -298,34 +295,15 @@ def wait_for_players(n: int = 2) -> list[dict]:
     return players_found
 
 
-def _wait_for_players_misty(n: int, users: dict) -> list[dict]:
-    """ID scan using Misty's front camera instead of a USB webcam."""
+def _wait_for_players_misty(n: int, users: dict, on_button=None) -> list[dict]:
+    """ID scan using Misty's front camera instead of a USB webcam.
+
+    Everything starts on the button press — no presence/motion detection.
+    """
     print("  [id_scanner] Using Misty's camera for ArUco scanning.")
 
-    # Presence detection: fetch frames and run MOG2 on them
-    subtractor = cv2.createBackgroundSubtractorMOG2(history=60, varThreshold=40,
-                                                     detectShadows=False)
-    stable = 0
-    print("  Watching for players to approach (Misty's camera)...")
-    while True:
-        frame = _read_misty_frame()
-        if frame is None:
-            time.sleep(MISTY_POLL_INTERVAL)
-            continue
-        small  = cv2.resize(frame, (320, 240))
-        mask   = subtractor.apply(small)
-        motion = cv2.countNonZero(mask)
-        if motion > MOTION_PIXELS:
-            stable += 1
-            if stable >= MOTION_STABLE:
-                break
-        else:
-            stable = 0
-        time.sleep(MISTY_POLL_INTERVAL)
-
-    print("  Someone detected — prompting for button press.")
-    misty.speak("Hello there! Press the green button when you are ready to play!")
-    _wait_for_button()
+    misty.speak("Press the green button when you are ready to play!")
+    _wait_for_button(on_press=on_button)
     print("  Button pressed — starting ID scan.")
     misty.speak("Great! Both players, please show me your ID cards!")
 

@@ -25,7 +25,7 @@ DEG_PER_SECOND = 15.17
 VOICE        = "en-gb-x-gbc-local"  # Android TTS voice installed on this robot
 PITCH        = 1.3                   # >1 = higher pitch (clearer for young kids)
 SPEECH_RATE  = 0.9                   # slightly faster for energy; still clear
-VOLUME       = 65                    # speaker volume 0-100 (set once at startup)
+VOLUME       = 70                    # speaker volume 0-100 (set once at startup)
 
 # Separate sessions so drive commands, arm gestures, and general API calls
 # never queue behind each other — requests.Session is not thread-safe for
@@ -107,7 +107,10 @@ def connect_ws():
         on_close   = _on_close,
     )
     threading.Thread(
-        target=lambda: _ws_app.run_forever(reconnect=5),
+        # ping keepalive: without it a dead connection (WiFi blip) is never
+        # detected and the event stream silently stays empty forever
+        target=lambda: _ws_app.run_forever(reconnect=5,
+                                           ping_interval=10, ping_timeout=5),
         daemon=True,
     ).start()
     time.sleep(1.0)
@@ -221,8 +224,23 @@ def stop():
 
 # ── Speech ────────────────────────────────────────────────────────────────────
 
+# Optional hook: called with every spoken line so a game can log Misty's
+# conversation. Set via set_speak_hook() while a game is running.
+_speak_hook = None
+
+
+def set_speak_hook(fn):
+    global _speak_hook
+    _speak_hook = fn
+
+
 def speak(text: str, wait: bool = True):
     print(f"    \"{text}\"")
+    if _speak_hook is not None:
+        try:
+            _speak_hook(text)
+        except Exception:
+            pass
     _post("tts/speak", {
         "Text":       text,
         "Flush":      True,
@@ -233,6 +251,16 @@ def speak(text: str, wait: bool = True):
     if wait:
         words = max(1, len(text.split()))
         time.sleep(words / (2.6 * SPEECH_RATE) + 0.8)
+
+
+def stop_speech():
+    """Interrupt any in-progress TTS immediately (flush with a blank utterance).
+    Used when Misty starts moving so speech never bleeds into a drive."""
+    try:
+        _post("tts/speak", {"Text": " ", "Flush": True, "Voice": VOICE,
+                            "Pitch": PITCH, "SpeechRate": SPEECH_RATE}, retries=1)
+    except Exception:
+        pass
 
 
 # ── LED ───────────────────────────────────────────────────────────────────────
@@ -316,6 +344,8 @@ def celebrate():
 
 
 def execute_drive_map(drive_map: list[tuple]):
+    # Cut any speech still playing the instant she starts moving.
+    stop_speech()
     for command in drive_map:
         print(f"    Executing: {command}")
         action = command[0]

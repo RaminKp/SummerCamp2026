@@ -188,6 +188,11 @@ def _wait_clear(timeout: float, clear_seconds: float = 1.5) -> bool:
     return False
 
 
+def _all_clear_now() -> bool:
+    """One-shot snapshot: True if every reader is currently empty."""
+    return all(uid is None for uid in _read_snapshot())
+
+
 def wait_for_tags_removed(speak_fn=None) -> str:
     _ensure_init()
 
@@ -195,6 +200,11 @@ def wait_for_tags_removed(speak_fn=None) -> str:
         print(f"  [RFID] {text}")
         if speak_fn:
             speak_fn(text)
+
+    # If the kids already pulled the cards during the drive home, don't nag.
+    if _all_clear_now():
+        print("  [RFID] Cards already removed — skipping the removal prompt.")
+        return "ok"
 
     _say("Let's remove all cards from the slot!")
     if _wait_clear(30.0):
@@ -208,10 +218,13 @@ def wait_for_tags_removed(speak_fn=None) -> str:
     return "powerdown"
 
 
-def wait_for_button(game_over_event: threading.Event | None = None) -> bool:
+def wait_for_button(game_over_event: threading.Event | None = None,
+                    on_press=None) -> bool:
     """Block until the green button (space/enter) is pressed once.
 
     Returns True if the button was pressed, False if game_over fired first.
+    on_press: optional callback fired the instant a real press arrives (used
+    to kick off video recording on the very first button press).
     Safe to call between run_detector() calls — uses the same stdin dispatcher.
     """
     global _active_press_queue
@@ -229,7 +242,13 @@ def wait_for_button(game_over_event: threading.Event | None = None) -> bool:
     event = q.get()
     with _active_press_queue_lock:
         _active_press_queue = None
-    return event != "game_over"
+    pressed = event != "game_over"
+    if pressed and on_press is not None:
+        try:
+            on_press()
+        except Exception:
+            pass
+    return pressed
 
 
 # ── Public API ────────────────────────────────────────────────────────────────

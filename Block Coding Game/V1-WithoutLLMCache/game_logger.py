@@ -14,10 +14,11 @@ from pathlib import Path
 
 from openpyxl import Workbook, load_workbook
 
-BASE_DIR  = Path(__file__).parent
-LOG_PATH  = BASE_DIR / "game_log.xlsx"
-JSON_PATH = BASE_DIR / "game_log.json"
-CSV_DIR   = BASE_DIR / "logs"
+BASE_DIR   = Path(__file__).parent
+LOG_PATH   = BASE_DIR / "game_log.xlsx"
+JSON_PATH  = BASE_DIR / "game_log.json"
+CSV_DIR    = BASE_DIR / "logs"
+CONVO_DIR  = BASE_DIR / "conversations"
 
 SESSIONS_HEADER = [
     "SessionID",
@@ -108,6 +109,17 @@ class GameLogger:
         self._checkpoint_start: datetime | None = None
         self._checkpoints: list[dict] = []   # inline in JSON session object
         self._attempt_rows: list[dict] = []  # for Excel / CSV / accuracy
+        self._conversation: list[dict] = []  # every line Misty speaks this game
+
+    # ── conversation logging ─────────────────────────────────────────────────
+
+    def log_speech(self, text: str):
+        """Record one line Misty spoke, with a timestamp. Wired to
+        misty.set_speak_hook() while the game runs."""
+        self._conversation.append({
+            "time": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+            "text": text,
+        })
 
     def _p(self, idx: int) -> dict:
         return self.players[idx] if idx < len(self.players) else {}
@@ -159,10 +171,23 @@ class GameLogger:
             "outcome":               outcome,
             "correct_attempts":      correct,
             "total_score":           float(correct),
+            "conversation":          self._conversation,
         }
         sessions = _load_json()
         sessions.append(session_obj)
         _save_json(sessions)
+
+        # ── Per-game conversation transcript ───────────────────────────────
+        try:
+            CONVO_DIR.mkdir(exist_ok=True)
+            safe_id = (self.session_id or "session").replace(":", "-").replace("/", "-")
+            lines = [f"[{c['time']}] Misty: {c['text']}" for c in self._conversation]
+            header = (f"Session: {self.session_id}\nMap: {self.map_name}\n"
+                      f"Outcome: {outcome}\n" + "-" * 50 + "\n")
+            (CONVO_DIR / f"{safe_id}.txt").write_text(
+                header + "\n".join(lines) + "\n", encoding="utf-8")
+        except Exception as e:
+            print(f"  [game_logger] Could not write conversation log: {e}")
 
         # ── Excel ──────────────────────────────────────────────────────────
         session_row = [
