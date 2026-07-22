@@ -4,85 +4,79 @@ from enum import Enum
 # ── Result types ──────────────────────────────────────────────────────────────
 
 class ValidationResult(Enum):
-    CORRECT     = "CORRECT"      # right IDs, right order
-    WRONG_ORDER = "WRONG_ORDER"  # right IDs, wrong order
-    WRONG_IDS   = "WRONG_IDS"    # IDs don't match the expected set
+    CORRECT     = "CORRECT"      # right cards, right order
+    WRONG_COUNT = "WRONG_COUNT"  # wrong number of cards placed
+    WRONG_SLOTS = "WRONG_SLOTS"  # right count, but some positions are wrong
 
 
-# ── Feedback messages (Misty will speak these) ────────────────────────────────
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
-MESSAGES = {
-    ValidationResult.CORRECT: (
-        "Sequence confirmed! Let's go!"
-    ),
-    ValidationResult.WRONG_ORDER: (
-        "You have the right numbers, but not in the right order. "
-        "Give it another go!"
-    ),
-    ValidationResult.WRONG_IDS: (
-        "I don't recognise that sequence. "
-        "Make sure you're using the right cards!"
-    ),
-}
+def _slots_phrase(slots: list[int]) -> str:
+    """['2','4'] → 'slot 2 and slot 4';  ['1','3','5'] → 'slot 1, slot 3 and slot 5'."""
+    labels = [f"slot {s}" for s in slots]
+    if len(labels) == 1:
+        return labels[0]
+    if len(labels) == 2:
+        return f"{labels[0]} and {labels[1]}"
+    return ", ".join(labels[:-1]) + f" and {labels[-1]}"
 
 
 # ── Core validator ────────────────────────────────────────────────────────────
 
 def validate(scanned: list[int], correct: list[int]) -> ValidationResult:
-    """
-    Compare the player's scanned sequence against the correct sequence
-    for the active map.
-
-    Args:
-        scanned: ordered list of ArUco IDs the player placed, e.g. [3, 1, 4]
-        correct: the expected sequence for the active map, e.g. [1, 3, 4]
-
-    Returns:
-        A ValidationResult enum value.
-    """
     if scanned == correct:
         return ValidationResult.CORRECT
-
-    if sorted(scanned) == sorted(correct):
-        return ValidationResult.WRONG_ORDER
-
-    return ValidationResult.WRONG_IDS
+    if len(scanned) != len(correct):
+        return ValidationResult.WRONG_COUNT
+    return ValidationResult.WRONG_SLOTS
 
 
-def get_message(result: ValidationResult) -> str:
-    """Return the speech string Misty should say for a given result."""
-    return MESSAGES[result]
+def get_message(result: ValidationResult,
+                scanned: list[int], correct: list[int]) -> str:
+    """Kid-facing feedback. Never reveals which card is correct — only that a
+    slot is wrong, or how many cards are needed."""
+    if result == ValidationResult.CORRECT:
+        return "Sequence confirmed! Let's go!"
+
+    if result == ValidationResult.WRONG_COUNT:
+        need = len(correct)
+        have = len(scanned)
+        return (
+            f"You placed {have} card{'s' if have != 1 else ''}, "
+            f"but I need exactly {need} card{'s' if need != 1 else ''}. "
+            "Let's try again!"
+        )
+
+    # WRONG_SLOTS — same count, some positions don't match
+    wrong = [i + 1 for i in range(len(correct)) if scanned[i] != correct[i]]
+    phrase = _slots_phrase(wrong)
+    verb   = "is" if len(wrong) == 1 else "are"
+    return (
+        f"{phrase[0].upper()}{phrase[1:]} {verb} wrong. "
+        "Try another card in those positions!"
+    )
 
 
-def validate_and_message(scanned: list[int], correct: list[int]) -> tuple[ValidationResult, str]:
-    """
-    Convenience function — validate and return both the result and
-    the message in one call.
-
-    Usage:
-        result, message = validate_and_message(scanned_ids, correct_sequence)
-    """
+def validate_and_message(scanned: list[int],
+                         correct: list[int]) -> tuple[ValidationResult, str]:
     result = validate(scanned, correct)
-    return result, get_message(result)
+    return result, get_message(result, scanned, correct)
 
 
 # ── Standalone test ───────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    correct = [3, 1, 4, 1, 5]
+    correct = [1, 3, 1, 2, 1]
 
     test_cases = [
-        ([3, 1, 4, 1, 5], "Exact match"),
-        ([1, 3, 4, 5, 1], "Right IDs, wrong order"),
-        ([9, 8, 7, 6, 5], "Completely wrong IDs"),
-        ([3, 1, 4, 2, 5], "One wrong ID"),
-        ([3, 1, 4],       "Subset of correct IDs"),
+        ([1, 3, 1, 2, 1], "Exact match"),
+        ([1, 2, 1, 3, 1], "Right cards, wrong order"),
+        ([1, 3, 1, 1, 1], "One slot wrong"),
+        ([1, 3, 1],       "Too few cards"),
+        ([1, 3, 1, 2, 1, 1], "Too many cards"),
     ]
 
     print(f"Correct sequence: {correct}\n")
-    print(f"{'Input':<25} {'Scenario':<30} {'Result':<15} Message")
-    print("-" * 100)
-
     for scanned, scenario in test_cases:
         result, message = validate_and_message(scanned, correct)
-        print(f"{str(scanned):<25} {scenario:<30} {result.value:<15} {message}")
+        print(f"{str(scanned):<22} {scenario:<26} {result.value:<12} {message}")

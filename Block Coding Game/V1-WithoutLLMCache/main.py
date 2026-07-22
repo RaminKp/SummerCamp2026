@@ -29,30 +29,35 @@ def _drive(drive_map: list):
 
 # ── Continuous recording (webcam is on the PC, not the Pi) ────────────────────
 # pc_recorder.py runs on the PC and holds the webcam. The Pi just tells it
-# when to cut segments. Find the PC's IP with `ipconfig` while it is
-# connected to the Pi's hotspot, and set it here.
+# when to cut segments. One continuous stream, cut into per-game videos:
+#   • the FIRST video starts on the first green-button press
+#   • each video is cut right after the goodbye, then the next starts at once
+#   • this repeats until the terminal is terminated
+# Set the PC's hotspot IP here (hostname -I on the PC).
 
-PC_RECORDER_URL = "http://10.42.0.16:8765"   # ← Linux PC on the Pi's hotspot (hostname -I to confirm)
+PC_RECORDER_URL = "http://10.42.0.16:8765"
+
+_recording_on = False
 
 
 def _recorder_cmd(path: str):
     try:
         requests.get(f"{PC_RECORDER_URL}/{path}", timeout=2)
     except Exception as e:
-        print(f"  [recorder] PC recorder unreachable ({e}) — game continues unrecorded.")
+        print(f"  [recorder] PC recorder unreachable ({e}) — continuing unrecorded.")
 
 
-def _start_recording(session_id: str):
-    """Close the current segment on the PC and immediately start a new one."""
-    _recorder_cmd(f"start?session_id={quote(session_id)}")
+def _new_segment():
+    """Cut the current video and immediately start the next one (gapless)."""
+    global _recording_on
+    _recording_on = True
+    _recorder_cmd(f"start?session_id={quote('segment_' + datetime.now().strftime('%Y%m%dT%H%M%S'))}")
 
 
-def _stop_recording():
-    _recorder_cmd("stop")
-
-
-def _restart_idle_recording():
-    _start_recording(f"idle_{datetime.now().strftime('%Y%m%dT%H%M%S')}")
+def _start_first_video():
+    """Fired on the first button press only — starts video 1."""
+    if not _recording_on:
+        _new_segment()
 
 
 def select_map():
@@ -87,16 +92,10 @@ def run_game(map_id: int, active_map, players: list[dict]):
     p1    = players[0]["name"]
     p2    = players[1]["name"]
 
-    logger   = GameLogger(players=players, map_name=active_map.name)
+    logger = GameLogger(players=players, map_name=active_map.name)
     logger.start()
-
-    # Cut from the idle segment to a per-game segment — unless a player
-    # has consent=false, in which case recording pauses for this game.
-    if not any(p.get("no_video") for p in players):
-        _start_recording(logger.session_id)
-    else:
-        _stop_recording()
-        print("  [recorder] Game not recorded — one or more players have consent=false.")
+    # Log every line Misty speaks for the duration of this game.
+    misty.set_speak_hook(logger.log_speech)
 
     print(f"\n{'='*50}")
     print(f"  MISTY MAZE GAME")
@@ -125,7 +124,6 @@ def run_game(map_id: int, active_map, players: list[dict]):
 
     # ── Intro narration ───────────────────────────────────────────────────────
     print("\nLoading intro narration...")
-
     narrator.prefetch_all(checkpoints)
 
     misty.led_ready()
@@ -136,7 +134,7 @@ def run_game(map_id: int, active_map, players: list[dict]):
         f"{p1} and {p2}, today we are going on {total} special missions to reach "
         "different destinations. I need your help to find the right path! "
         "Once each mission starts, use the cards to guide me step by step across the map. "
-        "The Straight card moves me one cell ahead. Left and Right cards turn me in that direction. "
+        "The Straight card moves me one cell ahead. Left and Right cards rotate me in that direction. "
         "Please do not touch the black walls — they are part of the maze! "
         "Let's work together, choose the best route, and help me reach each destination. "
         "Ready, mission team? Let's gooooo!"
@@ -150,6 +148,7 @@ def run_game(map_id: int, active_map, players: list[dict]):
     outcome              = "Completed"
     last_completed_cp: Checkpoint | None = None
     went_home_on_timeout = False   # guards against driving home twice
+    game_complete        = False   # True only on a full, successful finish
 
     for i, checkpoint in enumerate(checkpoints, 1):
         is_last = (i == total)
@@ -163,26 +162,9 @@ def run_game(map_id: int, active_map, players: list[dict]):
         print(f"   Sequence   : {checkpoint.sequence}")
 
         misty.led_ready()
+        # Hint never reveals the moves — only the destination.
         misty.speak(narrator.live(i, total, checkpoint.location, checkpoint.sequence, "hint"))
         misty.speak("Place your cards in the slots and press the green button when you are ready!")
-
-        # Live per-card feedback
-        _move_names = {1: "Straight", 2: "Turn Left", 3: "Turn Right"}
-        _alerted_slots: set[int] = set()
-
-        def _on_card_placed(slot_idx: int, game_id: int,
-                            seq=checkpoint.sequence):
-            if slot_idx in _alerted_slots:
-                return
-            if slot_idx >= len(seq) or game_id == 0:
-                return
-            if game_id != seq[slot_idx]:
-                _alerted_slots.add(slot_idx)
-                expected_name = _move_names.get(seq[slot_idx], "the right card")
-                misty.speak(
-                    f"Hmm, slot {slot_idx + 1} might be wrong! "
-                    f"Try {expected_name} there!"
-                )
 
         attempts = 0
         while True:
@@ -190,7 +172,6 @@ def run_game(map_id: int, active_map, players: list[dict]):
                 outcome = "TimeUp"
                 break
 
-            _alerted_slots.clear()
             print(f"\n   [Attempt {attempts + 1}] Waiting for cards — press green button to submit...")
             logger.begin_checkpoint_attempt()
 
@@ -203,7 +184,6 @@ def run_game(map_id: int, active_map, players: list[dict]):
                     "Place your cards in the slots and press the green button!"
                 ),
                 inactivity_secs=10.0,
-                card_placed_callback=_on_card_placed,
                 no_cards_callback=lambda: misty.speak(
                     "I don't see any cards! Place your cards in the slots and try again."
                 ),
@@ -219,13 +199,13 @@ def run_game(map_id: int, active_map, players: list[dict]):
                 misty.led(0, 0, 0)
                 misty.enable_hazards()
                 logger.end(outcome="Aborted")
-                _restart_idle_recording()
                 id_scanner.update_play_counts(players)
                 return
 
             attempts += 1
             print(f"   Scanned : {scanned}")
-            result, _ = validate_and_message(scanned, checkpoint.sequence)
+            # Correction happens here, at buzzer press — never live per card.
+            result, message = validate_and_message(scanned, checkpoint.sequence)
             print(f"   Result  : {result.value}")
             logger.log_attempt(
                 checkpoint_label=checkpoint.location,
@@ -275,7 +255,7 @@ def run_game(map_id: int, active_map, players: list[dict]):
                     else:
                         misty.speak("YESSSSS! What an incredible mission team you are!")
 
-                    # ── Remove cards ──────────────────────────────────────
+                    # ── Remove cards (silent if already removed) ──────────
                     removal = wait_for_tags_removed(speak_fn=misty.speak)
                     if removal == "powerdown":
                         print("\n  [RFID] Tags not removed — ending session.")
@@ -283,7 +263,6 @@ def run_game(map_id: int, active_map, players: list[dict]):
                         misty.led(0, 0, 0)
                         misty.enable_hazards()
                         logger.end(outcome="RFIDTimeout")
-                        _restart_idle_recording()
                         id_scanner.update_play_counts(players)
                         return
 
@@ -294,7 +273,6 @@ def run_game(map_id: int, active_map, players: list[dict]):
                             "when I am in position!"
                         )
                         wait_for_button(game_over_event=game_over_event)
-
                         if game_over_event.is_set():
                             outcome = "TimeUp"
                             break
@@ -305,30 +283,29 @@ def run_game(map_id: int, active_map, players: list[dict]):
 
                 if is_last:
                     print("\n   Final mission complete!")
-                    game_over_event.set()
-                    misty.celebrate()
+                    game_complete = True
+                    game_over_event.set()   # stop the 8-min timer cleanly
+                    misty.celebrate()       # the single goodbye on a win
+                    break
                 else:
                     misty.speak(f"Woohoo! Great work, team! Get ready for Mission {i + 1} — let's keep going!")
                 break
 
-            elif result == ValidationResult.WRONG_ORDER:
-                misty.led_error()
-                misty.speak(narrator.live(i, total, checkpoint.location,
-                                          checkpoint.sequence, "wrong_order"))
-                misty.led_ready()
-
             else:
+                # WRONG_COUNT or WRONG_SLOTS — feedback never reveals the answer.
                 misty.led_error()
-                misty.speak(narrator.live(i, total, checkpoint.location,
-                                          checkpoint.sequence, "wrong_ids"))
+                misty.speak(message)
                 misty.led_ready()
 
+        # ── after the attempts loop ──────────────────────────────────────────
+        if game_complete:
+            break
         if game_over_event.is_set():
             outcome = "TimeUp"
             break
 
     # ── End of game ───────────────────────────────────────────────────────────
-    if outcome == "TimeUp":
+    if outcome == "TimeUp" and not game_complete:
         print(f"\n{'='*50}")
         print("  TIME'S UP — GAME OVER")
         print(f"{'='*50}\n")
@@ -338,7 +315,7 @@ def run_game(map_id: int, active_map, players: list[dict]):
         misty.turn_180()
         misty.head(pitch=-40, yaw=-60)
         misty.speak(f"Time is up! You were an AMAZING mission team, {p1} and {p2}!")
-        misty.speak("See you next time — byeee!")
+        misty.speak("See you next time — byeee!")   # the single goodbye on a timeout
         misty.bye_gesture()
         misty.head(pitch=0, yaw=0)
         misty.led(0, 0, 0)
@@ -349,18 +326,15 @@ def run_game(map_id: int, active_map, players: list[dict]):
         print(f"{'='*50}\n")
         logger.end(outcome="Completed")
 
-    _restart_idle_recording()
     misty.enable_hazards()
     id_scanner.update_play_counts(players)
 
-    # Third end-of-game turn: celebrate()/TimeUp turned her to the kids,
-    # run_forever() turns once more — this one keeps the total odd so she
-    # ends up facing the kids for the next check-in.
+    # Odd-count turn so Misty ends facing the kids for the next check-in.
     misty.turn_180()
 
 
 def run_forever():
-    """Main loop: scan IDs → play game → repeat."""
+    """Main loop: check-in on button press → play game → repeat."""
     print("\n" + "="*50)
     print("  MISTY MAZE — STARTING UP")
     print("="*50)
@@ -369,16 +343,14 @@ def run_forever():
 
     map_id, active_map = select_map()
 
-    # Recording runs from program start; each game cuts its own segment.
-    _restart_idle_recording()
-
     misty.turn_180()
     misty.head(pitch=-40, yaw=-60)
     misty.speak("Hello! I am Misty and I am SO excited for today's missions!")
     misty.speak("When you are ready to play, press the green button to get started!")
 
     while True:
-        players = id_scanner.wait_for_players(n=2)
+        # First button press starts video 1; later videos start after goodbyes.
+        players = id_scanner.wait_for_players(n=2, on_button=_start_first_video)
 
         try:
             run_game(map_id, active_map, players)
@@ -386,16 +358,18 @@ def run_forever():
             print(f"\n[ERROR] Game crashed: {e}")
             misty.led_error()
             misty.speak("Oops, something went wrong. Please ask a grown-up for help.")
-            _restart_idle_recording()   # game segment may still be open — cut back to idle
+        finally:
+            misty.set_speak_hook(None)   # stop logging between games
+
+        # Cut this game's video right after the goodbye, start the next at once.
+        _new_segment()
 
         print("\n  Game over. Ready for the next players!")
         misty.led_ready()
-        # run_game leaves Misty facing the maze; turn to face kids for next check-in
         misty.turn_180()
         misty.head(pitch=-40, yaw=-60)
-        misty.speak("That was AMAZING! Who is ready to play next?")
-        misty.speak("Step up and show me your ID card!")
-        time.sleep(3)
+        misty.speak("Who is ready to play next? Step up and press the green button!")
+        time.sleep(2)
 
 
 if __name__ == "__main__":

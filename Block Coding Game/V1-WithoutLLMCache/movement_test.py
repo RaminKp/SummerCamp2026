@@ -3,7 +3,7 @@ import requests
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-MISTY_IP       = "10.42.0.197"  # update if changed
+MISTY_IP       = "10.42.0.198"  # update if changed
 BASE_URL       = f"http://{MISTY_IP}/api"
 
 DRIVE_SPEED    = 35.0
